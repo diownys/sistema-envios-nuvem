@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Sistema de Envios</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .login-container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 400px; }
+    h1 { color: #333; margin-bottom: 1.5rem; }
+    .input-group { margin-bottom: 1rem; text-align: left; }
+    label { display: block; margin-bottom: 0.5rem; color: #555; }
+    input { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+    button { width: 100%; padding: 0.9rem; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    button:hover { background-color: #0056b3; }
+    .error-message { color: #dc3545; margin-top: 1rem; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1>Acessar Sistema</h1>
+    <form id="login-form">
+      <div class="input-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required>
+      </div>
+      <div class="input-group">
+        <label for="password">Senha</label>
+        <input type="password" id="password" required>
+      </div>
+      <button type="submit">Entrar</button>
+    </form>
+    <div id="error-message" class="error-message"></div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    // ⚠️ SUBSTITUA PELAS SUAS CHAVES REAIS (as mesmas do index.html)
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const loginForm = document.getElementById('login-form');
+    const errorMessageDiv = document.getElementById('error-message');
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault(); // Impede o recarregamento da página
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      errorMessageDiv.textContent = ''; // Limpa erros antigos
+
+      // A MÁGICA DO LOGIN ACONTECE AQUI
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        // Se houver um erro, exibe a mensagem
+        errorMessageDiv.textContent = 'E-mail ou senha inválidos.';
+        console.error('Erro no login:', error.message);
+      } else {
+        // Se o login for bem-sucedido, redireciona para a página principal
+        window.location.href = '/index.html';
+      }
+    });
+  </script>
+</body>
+</html>
