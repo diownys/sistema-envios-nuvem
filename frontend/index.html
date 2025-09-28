@@ -1,104 +1,121 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
- <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Envios</title>
-<style>
- body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
- .header { 
- display: flex; 
- justify-content: space-between; 
- align-items: center; 
- margin-bottom: 2rem;
- flex-wrap: wrap;
-}
-.header h1 { color: #333; width: 100%; margin-bottom: 1rem; }
-.header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
-.grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-.menu-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; text-decoration: none; color: #333; font-size: 1.1rem; font-weight: bold; transition: transform 0.2s, box-shadow 0.2s; display: flex; justify-content: center; align-items: center; min-height: 60px; }
- .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-.no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; }
-.menu-card-special { background-color: #ffc107; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard de Envios</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+    .header h1 { color: #333; width: 100%; margin-bottom: 1rem; }
+    .header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .menu-card { 
+      background: white; 
+      padding: 1rem; 
+      border-radius: 8px; 
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+      text-decoration: none; 
+      color: #333; 
+      transition: transform 0.2s, box-shadow 0.2s; 
+      display: flex; 
+      flex-direction: column; /* Organiza o conteúdo em coluna */
+      justify-content: center; 
+      align-items: center; 
+      min-height: 80px;
+      text-align: center;
+    }
+    .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .card-info { font-size: 0.9rem; color: #666; }
+    .no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; grid-column: 1 / -1; } /* Ocupa a linha toda */
 
- @media (min-width: 768px) {
- body { padding: 2rem; }
- .header h1 { width: auto; margin-bottom: 0; }
-.grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
- .menu-card { font-size: 1.2rem; }
-.btn-import { font-size: 1rem; }
- }
-
- </style>
+    @media (min-width: 768px) {
+      body { padding: 2rem; }
+      .header h1 { width: auto; margin-bottom: 0; }
+      .grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+      .btn-import { font-size: 1rem; }
+    }
+  </style>
 </head>
 <body>
- <div class="header">
- <h1>Menus de Coleta</h1>
- 
- <div class="header-buttons">
-<a href="#" class="btn-import" style="background-color: #007bff;">Adicionar Venda</a>
-<a href="#" class="btn-import" style="background-color: #17a2b8;">Relatórios</a>
-<a href="#" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
-<a href="#" class="btn-import">Importar Planilha</a>
- </div>
-</div>
-<div class="grid-container" id="janelas-container">
- 
-<div class="no-data"><p>Carregando janelas de coleta...</p></div>
+  <div class="header">
+    <h1>Menus de Coleta</h1>
+    <div class="header-buttons">
+      <a href="#" class="btn-import" style="background-color: #007bff;">Adicionar Venda</a>
+      <a href="#" class="btn-import" style="background-color: #17a2b8;">Relatórios</a>
+      <a href="#" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
+      <a href="#" class="btn-import">Importar Planilha</a>
+    </div>
+  </div>
 
-</div>
+  <div class="grid-container" id="envios-container">
+    <div class="no-data"><p>Carregando envios...</p></div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-    // ⚠️ SUBSTITUA COM SEUS DADOS REAIS DO SUPABASE
-    const SUPABASE_URL = 'SUA_URL_DO_PROJETO_AQUI'; // Ex: https://abcxyz123.supabase.co
-    const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_PUBLIC_AQUI'; // Encontrada em Project Settings > API
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const container = document.getElementById('janelas-container');
+    // 1. ⚠️ CONFIGURAÇÃO - SUBSTITUA PELAS SUAS CHAVES REAIS
+    const SUPABASE_URL = 'SUA_SUPABASE_URL'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY'; // A chave pública (anon)
 
-    async function carregarJanelasDeColeta() {
-        // 1. Limpa o placeholder de "Carregando"
-        container.innerHTML = ''; 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const container = document.getElementById('envios-container');
 
-        // 2. Busca os dados no Supabase
-        const { data: janelas, error } = await supabase
-            .from('envios') // Nome da sua tabela
-            .select('janela_coleta') // Coluna que queremos listar
-            .not('janela_coleta', 'is', null) // Ignora valores nulos
-            .order('janela_coleta', { ascending: true })
-            .group('janela_coleta'); // Agrupa para ter apenas uma entrada por janela
+    // 2. FUNÇÃO PARA CARREGAR E EXIBIR OS DADOS
+    async function carregarEnvios() {
+      container.innerHTML = '<div class="no-data"><p>Buscando dados na nuvem...</p></div>';
 
-        if (error) {
-            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
-            console.error('Erro Supabase:', error);
-            return;
-        }
-
-        if (janelas.length === 0) {
-            container.innerHTML = `<div class="no-data"><p>Nenhuma janela de coleta encontrada...</p></div>`;
-            return;
-        }
-
-        // 3. Renderiza os cartões dinamicamente
-        janelas.forEach(janela => {
-            const link = document.createElement('a');
-            link.href = '#'; // Provisoriamente: Mudar depois para a página da janela
-            link.className = 'menu-card';
-            link.textContent = janela.janela_coleta;
-            container.appendChild(link);
-        });
+      try {
+        // Chama a nossa API (Edge Function) que criamos e publicamos
+        const { data, error } = await supabase.functions.invoke('get-lista-envios');
         
-        // Adiciona o cartão de vendas concluídas no final
-        const linkConcluidos = document.createElement('a');
-        linkConcluidos.href = '#'; // Provisoriamente: Mudar depois para a página de concluídos
-        linkConcluidos.className = 'menu-card menu-card-special';
-        linkConcluidos.textContent = 'Ver Vendas Concluídas';
-        container.appendChild(linkConcluidos);
+        if (error) {
+          throw error; // Joga o erro para o bloco catch
+        }
+
+        // Limpa o container
+        container.innerHTML = '';
+        
+        if (!data.envios || data.envios.length === 0) {
+          container.innerHTML = '<div class="no-data"><p>Nenhum envio encontrado.</p></div>';
+          return;
+        }
+
+        // Para cada envio retornado, cria um "menu-card"
+        data.envios.forEach(envio => {
+          const card = document.createElement('a');
+          card.href = '#'; // Provisoriamente. Depois levará para os detalhes do envio.
+          card.className = 'menu-card';
+
+          // Adiciona o conteúdo dentro do card
+          // Sinta-se à vontade para mudar quais campos do "envio" você quer mostrar
+          card.innerHTML = `
+            <div class="card-title">${envio.nome_cliente || 'Cliente não informado'}</div>
+            <div class="card-info">Valor: R$ ${envio.valor_venda || '0,00'}</div>
+          `;
+          
+          container.appendChild(card);
+        });
+
+      } catch (error) {
+        container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
+        console.error('Erro ao invocar a função:', error);
+      }
     }
 
-    carregarJanelasDeColeta();
-</script>
+    // 3. CHAMA A FUNÇÃO QUANDO A PÁGINA ESTIVER PRONTA
+    document.addEventListener('DOMContentLoaded', () => {
+      carregarEnvios();
+    });
+  </script>
 </body>
 </html>
