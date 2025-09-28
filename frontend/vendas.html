@@ -56,132 +56,174 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    let todasAsVendas = []; // Guarda a lista completa de vendas
-    const searchInput = document.getElementById('search-input');
-    const tableBody = document.getElementById('vendas-table-body');
+    // Guarda a lista completa de vendas da janela atual
+    let todasAsVendas = []; 
     
-    confirmForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const vendaId = document.getElementById('envio-id-input').value;
-    const volumes = document.getElementById('volumes-input').value;
-    const saveButton = document.getElementById('save-button');
-    saveButton.textContent = 'Processando...';
-    
-    try {
-        // Agora esperamos um HTML como resposta
-        const { data: htmlString, error } = await supabase.functions.invoke('confirmar-envio', { 
-            body: { envio_id: parseInt(vendaId), volumes: parseInt(volumes) },
-            responseType: 'text' // Importante!
-        });
-        if (error) throw error;
+    // --- FUNÇÃO PRINCIPAL: Executa quando a página carrega ---
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Proteção de Página: Verifica se o usuário está logado
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { 
+            window.location.href = '/login.html'; 
+            return; 
+        }
 
-        // Manda o HTML para impressão
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(htmlString);
-        printWindow.document.close();
-        printWindow.print();
+        // Prepara os elementos da página
+        const params = new URLSearchParams(window.location.search);
+        const janelaColeta = params.get('janela');
+        if (!janelaColeta) { 
+            document.getElementById('titulo-janela').textContent = "Erro: Janela não especificada."; 
+            return; 
+        }
+        document.getElementById('titulo-janela').textContent = `Vendas da Janela: ${janelaColeta}`;
+        
+        // Configura todos os "ouvintes" de eventos
+        setupEventListeners();
+        
+        // Carrega os dados da janela de coleta
+        await carregarVendas(janelaColeta);
+    });
 
-        // Remove a venda da lista local e renderiza a tabela novamente
-        vendasData = vendasData.filter(v => v.id != vendaId);
-        renderTable();
-        modal.style.display = 'none';
-
-    } catch(error) {
-        alert(`Erro ao confirmar: ${error.message}`);
-    } finally {
-        saveButton.textContent = 'Salvar Confirmação';
-    }
-});
-
-    // 3. LÓGICA DE BUSCA E RENDERIZAÇÃO ATUALIZADA
+    // --- FUNÇÃO PARA RENDERIZAR A TABELA ---
     function renderTable(vendasParaRenderizar) {
-      tableBody.innerHTML = '';
-      if (vendasParaRenderizar.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda encontrada.</td></tr>';
-        return;
-      }
-      vendasParaRenderizar.forEach(venda => {
-        tableBody.innerHTML += `
-          <tr id="venda-row-${venda.id}">
-            <td>${venda.cliente_nome || 'N/A'}</td>
-            <td>${venda.codigo_venda || 'N/A'}</td>
-            <td>${venda.volumes || '1'}</td>
-            <td>${venda.status || 'Pendente'}</td>
-            <td class="actions-cell">
-              <a href="envio-form.html?id=${venda.id}" class="btn btn-edit">Editar</a>
-              ${venda.status !== 'Confirmado' ? 
-                `<button class="btn btn-confirm" data-venda-id="${venda.id}">Confirmar</button>` : 
-                `<button class="btn btn-confirmed" disabled>Confirmado</button>`
-              }
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    searchInput.addEventListener('input', () => {
-        const query = searchInput.value.toLowerCase();
-        const vendasFiltradas = todasAsVendas.filter(venda => {
-         return (venda.cliente_nome && venda.cliente_nome.toLowerCase().includes(query)) ||
-           (venda.codigo_venda && venda.codigo_venda.toLowerCase().includes(query)) ||
-           (venda.ordem_manipulacao && venda.ordem_manipulacao.toLowerCase().includes(query));
+        const tableBody = document.getElementById('vendas-table-body');
+        tableBody.innerHTML = '';
+        if (vendasParaRenderizar.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda encontrada para o filtro atual.</td></tr>';
+            return;
+        }
+        vendasParaRenderizar.forEach(venda => {
+            tableBody.innerHTML += `
+                <tr id="venda-row-${venda.id}">
+                    <td>${venda.cliente_nome || 'N/A'}</td>
+                    <td>${venda.codigo_venda || 'N/A'}</td>
+                    <td>${venda.volumes || '1'}</td>
+                    <td>${venda.status || 'Pendente'}</td>
+                    <td class="actions-cell">
+                        <a href="envio-form.html?id=${venda.id}" class="btn btn-edit">Editar</a>
+                        ${venda.status !== 'Confirmado' ? 
+                            `<button class="btn btn-confirm" data-venda-id="${venda.id}">Confirmar</button>` : 
+                            `<button class="btn btn-confirmed" disabled>Confirmado</button>`
+                        }
+                    </td>
+                </tr>
+            `;
         });
-        renderTable(vendasFiltradas);
-    });
+    }
 
+    // --- FUNÇÃO PARA CARREGAR AS VENDAS DA API ---
     async function carregarVendas(janela) {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { body: { janela: janela } });
-        if (error) throw error;
-        todasAsVendas = data.vendas;
-        renderTable(todasAsVendas); // Renderiza a tabela completa inicialmente
-      } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
-      }
-    }
-
-    // 4. LÓGICA DO SCANNER DE QR CODE
-    const qrReaderDiv = document.getElementById('qr-reader');
-    const scanButton = document.getElementById('scan-button');
-    const html5QrCode = new Html5Qrcode("qr-reader");
-    let isScannerRunning = false;
-
-    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-        searchInput.value = decodedText;
-        searchInput.dispatchEvent(new Event('input')); // Dispara o evento de busca
-        stopScanner();
-    };
-    
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-    function startScanner() {
-        qrReaderDiv.style.display = 'block';
-        scanButton.textContent = 'Fechar Câmera';
-        isScannerRunning = true;
-        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-            .catch(err => alert("Erro ao iniciar a câmera. Verifique as permissões."));
-    }
-
-    function stopScanner() {
-        if (isScannerRunning) {
-            html5QrCode.stop().then(() => {
-                qrReaderDiv.style.display = 'none';
-                scanButton.textContent = 'Escanear';
-                isScannerRunning = false;
-            });
+        const tableBody = document.getElementById('vendas-table-body');
+        tableBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+        try {
+            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { body: { janela: janela } });
+            if (error) throw error;
+            todasAsVendas = data.vendas;
+            renderTable(todasAsVendas);
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
         }
     }
 
-    scanButton.addEventListener('click', () => {
-        if (isScannerRunning) {
+    // --- FUNÇÃO PARA CONFIGURAR TODOS OS EVENTOS ---
+    function setupEventListeners() {
+        const searchInput = document.getElementById('search-input');
+        const tableBody = document.getElementById('vendas-table-body');
+        const modal = document.getElementById('confirm-modal');
+        const confirmForm = document.getElementById('confirm-form');
+        const scanButton = document.getElementById('scan-button');
+        const qrReaderDiv = document.getElementById('qr-reader');
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        let isScannerRunning = false;
+        
+        // Evento de Busca
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const vendasFiltradas = todasAsVendas.filter(venda => 
+                (venda.cliente_nome?.toLowerCase().includes(query)) ||
+                (venda.codigo_venda?.toLowerCase().includes(query)) ||
+                (venda.ordem_manipulacao?.toLowerCase().includes(query))
+            );
+            renderTable(vendasFiltradas);
+        });
+
+        // Eventos na Tabela (Confirmar e Editar)
+        tableBody.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.matches('.btn-confirm')) {
+                const vendaId = target.dataset.vendaId;
+                const venda = todasAsVendas.find(v => v.id == vendaId);
+                if (venda) {
+                    document.getElementById('modal-cliente-nome').textContent = venda.cliente_nome;
+                    document.getElementById('volumes-input').value = venda.volumes || 1;
+                    document.getElementById('envio-id-input').value = venda.id;
+                    modal.style.display = 'flex';
+                }
+            }
+        });
+
+        // Evento do formulário do Modal
+        confirmForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const vendaId = document.getElementById('envio-id-input').value;
+            const volumes = document.getElementById('volumes-input').value;
+            const saveButton = document.getElementById('save-button');
+            saveButton.textContent = 'Processando...';
+            try {
+                const { data: htmlString, error } = await supabase.functions.invoke('confirmar-envio', { 
+                    body: { envio_id: parseInt(vendaId), volumes: parseInt(volumes) },
+                    responseType: 'text'
+                });
+                if (error) throw error;
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(htmlString);
+                printWindow.document.close();
+                printWindow.print();
+                todasAsVendas = todasAsVendas.filter(v => v.id != vendaId);
+                renderTable(todasAsVendas);
+                modal.style.display = 'none';
+            } catch(error) {
+                alert(`Erro ao confirmar: ${error.message}`);
+            } finally {
+                saveButton.textContent = 'Salvar Confirmação';
+            }
+        });
+        
+        // Evento do botão Cancelar do Modal
+        document.getElementById('cancel-button').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Eventos do Scanner de QR Code
+        const qrCodeSuccessCallback = (decodedText) => {
+            searchInput.value = decodedText;
+            searchInput.dispatchEvent(new Event('input'));
             stopScanner();
-        } else {
-            startScanner();
-        }
-    });
+        };
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-    // Lógica do Modal e Botões (continua a mesma)
-    // ... (cole aqui toda a lógica de clique para '.btn-confirm', '.btn-edit' e o formulário do modal) ...
+        function startScanner() {
+            qrReaderDiv.style.display = 'block';
+            scanButton.textContent = 'Fechar Câmera';
+            isScannerRunning = true;
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(err => alert("Erro ao iniciar a câmera. Verifique as permissões."));
+        }
+
+        function stopScanner() {
+            if (isScannerRunning) {
+                html5QrCode.stop().then(() => {
+                    qrReaderDiv.style.display = 'none';
+                    scanButton.textContent = 'Escanear';
+                    isScannerRunning = false;
+                });
+            }
+        }
+
+        scanButton.addEventListener('click', () => {
+            isScannerRunning ? stopScanner() : startScanner();
+        });
+    }
 </script>
 </body>
 </html>
