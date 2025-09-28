@@ -100,8 +100,9 @@
     searchInput.addEventListener('input', () => {
         const query = searchInput.value.toLowerCase();
         const vendasFiltradas = todasAsVendas.filter(venda => {
-            return (venda.cliente_nome && venda.cliente_nome.toLowerCase().includes(query)) ||
-                   (venda.codigo_venda && venda.codigo_venda.toLowerCase().includes(query));
+         return (venda.cliente_nome && venda.cliente_nome.toLowerCase().includes(query)) ||
+           (venda.codigo_venda && venda.codigo_venda.toLowerCase().includes(query)) ||
+           (venda.ordem_manipulacao && venda.ordem_manipulacao.toLowerCase().includes(query));
         });
         renderTable(vendasFiltradas);
     });
