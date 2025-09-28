@@ -14,7 +14,7 @@
     th { background-color: #f8f9fa; }
     .actions-cell { display: flex; gap: 0.5rem; }
     .btn { padding: 0.5rem 1rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; border: none; cursor: pointer; color: white; }
-    .btn-label { background-color: #ffc107; color: #333; }
+    .btn-edit { background-color: #ffc107; color: #212529; } /* NOVO ESTILO */
     .btn-confirm { background-color: #007bff; }
     .btn-confirmed { background-color: #28a745; cursor: not-allowed; }
     /* Estilos do Modal */
@@ -58,9 +58,10 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    let vendasData = []; // Armazena os dados das vendas
+    let vendasData = [];
 
     document.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -87,7 +88,7 @@
             <td>${venda.volumes || '1'}</td>
             <td>${venda.status || 'Pendente'}</td>
             <td class="actions-cell">
-              <a href="#" class="btn btn-label" data-venda-id="${venda.id}">Etiqueta</a>
+              <a href="#" class="btn btn-edit" data-venda-id="${venda.id}">Editar</a>
               ${venda.status !== 'Confirmado' ? 
                 `<button class="btn btn-confirm" data-venda-id="${venda.id}">Confirmar</button>` : 
                 `<button class="btn btn-confirmed" disabled>Confirmado</button>`
@@ -109,14 +110,12 @@
       }
     }
 
-    // Lógica do Modal e dos Botões
     const modal = document.getElementById('confirm-modal');
     const confirmForm = document.getElementById('confirm-form');
     
     document.getElementById('vendas-table-body').addEventListener('click', async (event) => {
       const target = event.target;
 
-      // Lógica para o botão de CONFIRMAR
       if (target.matches('.btn-confirm')) {
         const vendaId = target.dataset.vendaId;
         const venda = vendasData.find(v => v.id == vendaId);
@@ -128,27 +127,30 @@
         }
       }
 
-      // Lógica para o botão de ETIQUETA
-      if (target.matches('.btn-label')) {
+      // LÓGICA DO BOTÃO EDITAR (PLACEHOLDER)
+      if (target.matches('.btn-edit')) {
           event.preventDefault();
           const vendaId = target.dataset.vendaId;
+          // Por enquanto, podemos adicionar um link para a etiqueta ou um alerta
+          alert('A funcionalidade de Editar será implementada em breve! Por enquanto, vamos gerar a etiqueta.');
+
+          // Re-adicionando a lógica da etiqueta aqui
           target.textContent = 'Gerando...';
           try {
-            const { data: htmlString, error } = await supabase.functions.invoke('gerar-etiqueta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
+            const { data: htmlString, error } = await supabase.functions.invoke('gerar-eta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
             if (error) throw error;
             const printWindow = window.open('', '_blank');
             printWindow.document.write(htmlString);
             printWindow.document.close();
             printWindow.print();
-            target.textContent = 'Etiqueta';
+            target.textContent = 'Editar';
           } catch (error) {
             alert(`Erro ao gerar etiqueta: ${error.message}`);
-            target.textContent = 'Etiqueta';
+            target.textContent = 'Editar';
           }
       }
     });
 
-    // Lógica do formulário do modal
     confirmForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const vendaId = document.getElementById('envio-id-input').value;
@@ -160,7 +162,6 @@
             const { data, error } = await supabase.functions.invoke('confirmar-envio', { body: { envio_id: parseInt(vendaId), volumes: parseInt(volumes) } });
             if (error) throw error;
 
-            // Atualiza os dados locais e renderiza a tabela novamente
             const index = vendasData.findIndex(v => v.id == vendaId);
             if (index !== -1) {
               vendasData[index] = data.venda;
