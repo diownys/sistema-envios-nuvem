@@ -80,19 +80,17 @@
       setupCreateUserForm();
     });
 
-// Arquivo: frontend/admin.html (substitua apenas esta função)
-
 // Arquivo: frontend/admin.html (substitua a função carregarLogs)
 
 async function carregarLogs() {
   const tableBody = document.getElementById('logs-table-body');
   
-  // MUDANÇA AQUI: Chamando a nova função de TESTE
-  const { data, error } = await supabase.rpc('test_get_logs');
+  // Voltamos a chamar a função principal e correta
+  const { data, error } = await supabase.rpc('get_detailed_activity_logs');
 
   if (error) {
     tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
-    console.error('Erro RPC (teste):', error);
+    console.error('Erro RPC:', error);
     return;
   }
 
@@ -114,7 +112,6 @@ async function carregarLogs() {
     `;
   });
 }
-
     function setupCreateUserForm() {
       const form = document.getElementById('create-user-form');
       const messageDiv = document.getElementById('form-message');
