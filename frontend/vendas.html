@@ -86,7 +86,7 @@
             <td>${venda.volumes || '1'}</td>
             <td>${venda.status || 'Pendente'}</td>
             <td class="actions-cell">
-              <a href="#" class="btn btn-edit" data-venda-id="${venda.id}">Editar</a>
+              <a href="envio-form.html?id=${venda.id}" class="btn btn-edit">Editar</a>
               ${venda.status !== 'Confirmado' ? 
                 `<button class="btn btn-confirm" data-venda-id="${venda.id}">Confirmar</button>` : 
                 `<button class="btn btn-confirmed" disabled>Confirmado</button>`
