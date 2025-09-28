@@ -82,21 +82,23 @@
 
 // Arquivo: frontend/admin.html (substitua a função carregarLogs)
 
+// Arquivo: frontend/admin.html (substitua a função carregarLogs)
+
 async function carregarLogs() {
   const tableBody = document.getElementById('logs-table-body');
   
-  // Voltamos a chamar a função principal e correta
-  const { data, error } = await supabase.rpc('get_detailed_activity_logs');
+  // Chamando a função de TESTE que não toca nos seus dados
+  const { data, error } = await supabase.rpc('test_return_data');
 
   if (error) {
-    tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
-    console.error('Erro RPC:', error);
+    tableBody.innerHTML = `<tr><td colspan="5">Erro até mesmo na função de teste: ${error.message}</td></tr>`;
+    console.error('Erro RPC (teste de dados):', error);
     return;
   }
 
   tableBody.innerHTML = '';
   if (!data || data.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="5">Nenhum log de atividade encontrado.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="5">A função de teste não retornou dados.</td></tr>`;
     return;
   }
   
