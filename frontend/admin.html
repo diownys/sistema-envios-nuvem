@@ -82,21 +82,22 @@
 
 // Arquivo: frontend/admin.html (substitua apenas esta função)
 
+// Arquivo: frontend/admin.html (substitua a função carregarLogs)
+
 async function carregarLogs() {
   const tableBody = document.getElementById('logs-table-body');
   
-  const { data, error } = await supabase.rpc('get_detailed_activity_logs');
+  // MUDANÇA AQUI: Chamando a nova função de TESTE
+  const { data, error } = await supabase.rpc('test_get_logs');
 
   if (error) {
-    // Atualiza o colspan para 5 colunas
     tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
-    console.error('Erro RPC:', error);
+    console.error('Erro RPC (teste):', error);
     return;
   }
 
   tableBody.innerHTML = '';
   if (!data || data.length === 0) {
-    // Atualiza o colspan para 5 colunas
     tableBody.innerHTML = `<tr><td colspan="5">Nenhum log de atividade encontrado.</td></tr>`;
     return;
   }
@@ -108,7 +109,8 @@ async function carregarLogs() {
         <td>${log.user_email}</td>
         <td>${log.action}</td>
         <td>${log.cliente_nome}</td>
-        <td>${log.codigo_venda}</td> </tr>
+        <td>${log.codigo_venda}</td>
+      </tr>
     `;
   });
 }
