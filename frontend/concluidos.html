@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendas Concluídas</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+    .header { margin-bottom: 2rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
+    h1 { color: #333; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
+    .actions-cell { display: flex; gap: 0.5rem; }
+    .btn { padding: 0.5rem 1rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; border: none; cursor: pointer; color: white; }
+    .btn-reprint { background-color: #17a2b8; }
+    .btn-revert { background-color: #ffc107; color: #212529; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/index.html">&larr; Voltar ao Menu</a>
+    <h1>Vendas Concluídas</h1>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead><tr><th>Cliente</th><th>Cód. Venda</th><th>Volumes</th><th>Confirmado em</th><th>Ações</th></tr></thead>
+      <tbody id="concluidos-table-body"></tbody>
+    </table>
+  </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = 'SUA_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let concluidosData = [];
+    const tableBody = document.getElementById('concluidos-table-body');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { window.location.href = '/login.html'; return; }
+        await carregarConcluidos();
+    });
+    
+    function renderTable() {
+        tableBody.innerHTML = '';
+        if (concluidosData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda concluída encontrada.</td></tr>';
+            return;
+        }
+        concluidosData.forEach(venda => {
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${venda.cliente_nome || 'N/A'}</td>
+                    <td>${venda.codigo_venda || 'N/A'}</td>
+                    <td>${venda.volumes || '1'}</td>
+                    <td>${new Date(venda.updated_at).toLocaleString('pt-BR')}</td>
+                    <td class="actions-cell">
+                        <button class="btn btn-revert" data-venda-id="${venda.id}">Reverter</button>
+                        <button class="btn btn-reprint" data-venda-id="${venda.id}">Reimprimir</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function carregarConcluidos() {
+        tableBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+        try {
+            const { data, error } = await supabase.functions.invoke('get-concluidos');
+            if (error) throw error;
+            concluidosData = data.concluidos;
+            renderTable();
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
+        }
+    }
+
+    tableBody.addEventListener('click', async (event) => {
+        const target = event.target;
+        const vendaId = target.dataset.vendaId;
+
+        if (target.matches('.btn-revert')) {
+            if (confirm('Tem certeza que deseja reverter esta venda para "Pendente"?')) {
+                target.textContent = 'Revertendo...';
+                const { error } = await supabase.functions.invoke('reverter-envio', { body: { envio_id: parseInt(vendaId) } });
+                if (error) {
+                    alert(`Erro ao reverter: ${error.message}`);
+                    target.textContent = 'Reverter';
+                } else {
+                    concluidosData = concluidosData.filter(v => v.id != vendaId);
+                    renderTable();
+                }
+            }
+        }
+
+        if (target.matches('.btn-reprint')) {
+            target.textContent = 'Gerando...';
+            try {
+                // A função `gerar-etiqueta` já existe e faz exatamente o que precisamos!
+                const { data: htmlString, error } = await supabase.functions.invoke('gerar-etiqueta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
+                if (error) throw error;
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(htmlString);
+                printWindow.document.close();
+                printWindow.print();
+            } catch (error) {
+                alert(`Erro ao reimprimir: ${error.message}`);
+            } finally {
+                target.textContent = 'Reimprimir';
+            }
+        }
+    });
+</script>
+</body>
+</html>

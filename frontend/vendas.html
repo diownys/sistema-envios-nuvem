@@ -60,16 +60,38 @@
     const searchInput = document.getElementById('search-input');
     const tableBody = document.getElementById('vendas-table-body');
     
-    document.addEventListener('DOMContentLoaded', async () => {
-      // ... (lógica de proteção de página continua a mesma) ...
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = '/login.html'; return; }
-      const params = new URLSearchParams(window.location.search);
-      const janelaColeta = params.get('janela');
-      if (!janelaColeta) { document.getElementById('titulo-janela').textContent = "Erro: Janela não especificada."; return; }
-      document.getElementById('titulo-janela').textContent = `Vendas da Janela: ${janelaColeta}`;
-      await carregarVendas(janelaColeta);
-    });
+    confirmForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const vendaId = document.getElementById('envio-id-input').value;
+    const volumes = document.getElementById('volumes-input').value;
+    const saveButton = document.getElementById('save-button');
+    saveButton.textContent = 'Processando...';
+    
+    try {
+        // Agora esperamos um HTML como resposta
+        const { data: htmlString, error } = await supabase.functions.invoke('confirmar-envio', { 
+            body: { envio_id: parseInt(vendaId), volumes: parseInt(volumes) },
+            responseType: 'text' // Importante!
+        });
+        if (error) throw error;
+
+        // Manda o HTML para impressão
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(htmlString);
+        printWindow.document.close();
+        printWindow.print();
+
+        // Remove a venda da lista local e renderiza a tabela novamente
+        vendasData = vendasData.filter(v => v.id != vendaId);
+        renderTable();
+        modal.style.display = 'none';
+
+    } catch(error) {
+        alert(`Erro ao confirmar: ${error.message}`);
+    } finally {
+        saveButton.textContent = 'Salvar Confirmação';
+    }
+});
 
     // 3. LÓGICA DE BUSCA E RENDERIZAÇÃO ATUALIZADA
     function renderTable(vendasParaRenderizar) {
