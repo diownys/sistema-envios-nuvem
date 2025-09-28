@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+ <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Envios</title>
+<style>
+ body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+ .header { 
+ display: flex; 
+ justify-content: space-between; 
+ align-items: center; 
+ margin-bottom: 2rem;
+ flex-wrap: wrap;
+}
+.header h1 { color: #333; width: 100%; margin-bottom: 1rem; }
+.header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
+.grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.menu-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; text-decoration: none; color: #333; font-size: 1.1rem; font-weight: bold; transition: transform 0.2s, box-shadow 0.2s; display: flex; justify-content: center; align-items: center; min-height: 60px; }
+ .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+.no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; }
+.menu-card-special { background-color: #ffc107; }
+
+ @media (min-width: 768px) {
+ body { padding: 2rem; }
+ .header h1 { width: auto; margin-bottom: 0; }
+.grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+ .menu-card { font-size: 1.2rem; }
+.btn-import { font-size: 1rem; }
+ }
+
+ </style>
+</head>
+<body>
+ <div class="header">
+ <h1>Menus de Coleta</h1>
+ 
+ <div class="header-buttons">
+<a href="#" class="btn-import" style="background-color: #007bff;">Adicionar Venda</a>
+<a href="#" class="btn-import" style="background-color: #17a2b8;">Relatórios</a>
+<a href="#" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
+<a href="#" class="btn-import">Importar Planilha</a>
+ </div>
+</div>
+<div class="grid-container" id="janelas-container">
+ 
+<div class="no-data"><p>Carregando janelas de coleta...</p></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    // ⚠️ SUBSTITUA COM SEUS DADOS REAIS DO SUPABASE
+    const SUPABASE_URL = 'SUA_URL_DO_PROJETO_AQUI'; // Ex: https://abcxyz123.supabase.co
+    const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_PUBLIC_AQUI'; // Encontrada em Project Settings > API
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const container = document.getElementById('janelas-container');
+
+    async function carregarJanelasDeColeta() {
+        // 1. Limpa o placeholder de "Carregando"
+        container.innerHTML = ''; 
+
+        // 2. Busca os dados no Supabase
+        const { data: janelas, error } = await supabase
+            .from('envios') // Nome da sua tabela
+            .select('janela_coleta') // Coluna que queremos listar
+            .not('janela_coleta', 'is', null) // Ignora valores nulos
+            .order('janela_coleta', { ascending: true })
+            .group('janela_coleta'); // Agrupa para ter apenas uma entrada por janela
+
+        if (error) {
+            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
+            console.error('Erro Supabase:', error);
+            return;
+        }
+
+        if (janelas.length === 0) {
+            container.innerHTML = `<div class="no-data"><p>Nenhuma janela de coleta encontrada...</p></div>`;
+            return;
+        }
+
+        // 3. Renderiza os cartões dinamicamente
+        janelas.forEach(janela => {
+            const link = document.createElement('a');
+            link.href = '#'; // Provisoriamente: Mudar depois para a página da janela
+            link.className = 'menu-card';
+            link.textContent = janela.janela_coleta;
+            container.appendChild(link);
+        });
+        
+        // Adiciona o cartão de vendas concluídas no final
+        const linkConcluidos = document.createElement('a');
+        linkConcluidos.href = '#'; // Provisoriamente: Mudar depois para a página de concluídos
+        linkConcluidos.className = 'menu-card menu-card-special';
+        linkConcluidos.textContent = 'Ver Vendas Concluídas';
+        container.appendChild(linkConcluidos);
+    }
+
+    carregarJanelasDeColeta();
+</script>
+</body>
+</html>
