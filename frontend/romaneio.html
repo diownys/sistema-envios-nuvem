@@ -42,7 +42,7 @@
         
         // Popula o menu dropdown com as janelas disponíveis
         try {
-            const { data, error } = await supabase.functions.invoke('get-lista-envios');
+            const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio');
             if (error) throw error;
             
             selectElement.innerHTML = '<option value="">Selecione a Janela de Coleta</option>';
