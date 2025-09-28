@@ -32,7 +32,7 @@
     <h2>Logs de Atividade</h2>
     <div class="table-container">
       <table>
-        <thead><tr><th>Horário</th><th>Usuário (ID)</th><th>Ação</th><th>Venda (ID)</th></tr></thead>
+        <thead><tr><th>Horário</th><th>Usuário</th><th>Ação</th><th>Cliente</th></tr></thead>
         <tbody id="logs-table-body"><tr><td colspan="4">Carregando logs...</td></tr></tbody>
       </table>
     </div>
@@ -80,25 +80,38 @@
       setupCreateUserForm();
     });
 
-    async function carregarLogs() {
-      const tableBody = document.getElementById('logs-table-body');
-      const { data, error } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false });
-      if (error) {
-        tableBody.innerHTML = `<tr><td colspan="4">Erro ao carregar logs: ${error.message}</td></tr>`;
-        return;
-      }
-      tableBody.innerHTML = '';
-      data.forEach(log => {
-        tableBody.innerHTML += `
-          <tr>
-            <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-            <td>${log.user_id}</td>
-            <td>${log.action}</td>
-            <td>${log.envio_id}</td>
-          </tr>
-        `;
-      });
-    }
+// Arquivo: frontend/admin.html (substitua apenas esta função)
+
+async function carregarLogs() {
+  const tableBody = document.getElementById('logs-table-body');
+  
+  const { data, error } = await supabase.rpc('get_detailed_activity_logs');
+
+  if (error) {
+    // Atualiza o colspan para 5 colunas
+    tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
+    console.error('Erro RPC:', error);
+    return;
+  }
+
+  tableBody.innerHTML = '';
+  if (!data || data.length === 0) {
+    // Atualiza o colspan para 5 colunas
+    tableBody.innerHTML = `<tr><td colspan="5">Nenhum log de atividade encontrado.</td></tr>`;
+    return;
+  }
+  
+  data.forEach(log => {
+    tableBody.innerHTML += `
+      <tr>
+        <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
+        <td>${log.user_email}</td>
+        <td>${log.action}</td>
+        <td>${log.cliente_nome}</td>
+        <td>${log.codigo_venda}</td> </tr>
+    `;
+  });
+}
 
     function setupCreateUserForm() {
       const form = document.getElementById('create-user-form');
