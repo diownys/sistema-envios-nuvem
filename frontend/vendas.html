@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendas da Janela</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+    .header { margin-bottom: 2rem; }
+    .header a { color: #007bff; text-decoration: none; font-weight: bold; }
+    h1 { color: #333; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f8f9fa; }
+    .action-button { background-color: #ffc107; color: #333; padding: 0.5rem 1rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/index.html">&larr; Voltar para o Menu</a>
+    <h1 id="titulo-janela">Carregando...</h1>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="vendas-table-body">
+        <tr><td colspan="4">Buscando vendas...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Proteção de Página (igual ao index.html)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      // 2. Ler a janela da URL
+      const params = new URLSearchParams(window.location.search);
+      const janelaColeta = params.get('janela');
+
+      if (!janelaColeta) {
+        document.getElementById('titulo-janela').textContent = "Erro: Janela não especificada.";
+        return;
+      }
+
+      document.getElementById('titulo-janela').textContent = `Vendas da Janela: ${janelaColeta}`;
+      await carregarVendas(janelaColeta);
+    });
+
+    async function carregarVendas(janela) {
+      const tableBody = document.getElementById('vendas-table-body');
+      try {
+        // 3. Chamar nossa NOVA API
+        const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', {
+          body: { janela: janela }
+        });
+
+        if (error) throw error;
+        tableBody.innerHTML = '';
+
+        if (!data.vendas || data.vendas.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4">Nenhuma venda encontrada para esta janela.</td></tr>';
+          return;
+        }
+
+        // 4. Preencher a tabela
+        data.vendas.forEach(venda => {
+          const row = `
+            <tr>
+              <td>${venda.cliente_nome || 'N/A'}</td>
+              <td>R$ ${venda.valor_venda || '0,00'}</td>
+              <td>${venda.status || 'Pendente'}</td>
+              <td><a href="#" class="action-button" data-venda-id="${venda.id}">Gerar Etiqueta</a></td>
+            </tr>
+          `;
+          tableBody.innerHTML += row;
+        });
+      } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="4">Erro ao carregar vendas: ${error.message}</td></tr>`;
+        console.error('Erro:', error);
+      }
+    }
+  </script>
+</body>
+</html>
