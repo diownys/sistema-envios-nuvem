@@ -358,3 +358,14 @@ entrypoint = "./functions/get-vendas-por-janela/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/get-vendas-por-janela/*.html" ]
+
+[functions.gerar-etiqueta]
+enabled = true
+verify_jwt = true
+import_map = "./functions/gerar-etiqueta/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/gerar-etiqueta/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/gerar-etiqueta/*.html" ]
