@@ -61,53 +61,65 @@
   </div>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// Arquivo: frontend/index.html (substitua o <script> inteiro por este)
 
-    // 1. ⚠️ CONFIGURAÇÃO - SUBSTITUA PELAS SUAS CHAVES REAIS
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const container = document.getElementById('envios-container');
+// Suas chaves do Supabase já devem estar aqui
+const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
 
-  async function carregarMenuDeColeta() {
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const container = document.getElementById('envios-container');
+
+// ---- NOVA LÓGICA DE PROTEÇÃO ----
+// Tudo agora acontece depois que o DOM da página é carregado
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Verifica se existe uma sessão de usuário ativa
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+        // 2. Se NÃO houver sessão, redireciona para a página de login
+        window.location.href = '/login.html';
+    } else {
+        // 3. Se HOUVER sessão, o usuário está logado.
+        // A página continua carregando normalmente.
+        console.log('Usuário logado:', session.user.email);
+        // Agora podemos carregar os menus de coleta.
+        await carregarMenuDeColeta();
+    }
+});
+// ---- FIM DA NOVA LÓGICA ----
+
+
+async function carregarMenuDeColeta() {
     container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
     try {
-      const { data, error } = await supabase.functions.invoke('get-lista-envios');
-      
-      if (error) throw error;
-
-      container.innerHTML = '';
-      
-      if (!data.janelas || data.janelas.length === 0) {
-        container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada.</p></div>';
-        return;
-      }
-
-      // LÓGICA ATUALIZADA:
-      // Agora, iteramos sobre a lista de janelas únicas
-      data.janelas.forEach(janela => {
-        const card = document.createElement('a');
+        const { data, error } = await supabase.functions.invoke('get-lista-envios');
         
-        // Preparamos o link para o futuro. Ele levará para uma página
-        // que mostrará apenas as vendas desta janela.
-        card.href = `vendas.html?janela=${encodeURIComponent(janela)}`; 
-        card.className = 'menu-card';
-        card.textContent = janela; // O texto do card é o nome da janela
+        if (error) throw error;
+
+        container.innerHTML = '';
         
-        container.appendChild(card);
-      });
+        if (!data.janelas || data.janelas.length === 0) {
+            container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada.</p></div>';
+            return;
+        }
+
+        data.janelas.forEach(janela => {
+            const card = document.createElement('a');
+            card.href = `vendas.html?janela=${encodeURIComponent(janela)}`; 
+            card.className = 'menu-card';
+            card.textContent = janela;
+            container.appendChild(card);
+        });
 
     } catch (error) {
-      container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
-      console.error('Erro ao invocar a função:', error);
+        container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
+        console.error('Erro ao invocar a função:', error);
     }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    carregarMenuDeColeta();
-  });
+}
 </script>
 </body>
 </html>
