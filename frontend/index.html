@@ -70,52 +70,44 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const container = document.getElementById('envios-container');
 
-    // 2. FUNÇÃO PARA CARREGAR E EXIBIR OS DADOS
-    async function carregarEnvios() {
-      container.innerHTML = '<div class="no-data"><p>Buscando dados na nuvem...</p></div>';
+  async function carregarMenuDeColeta() {
+    container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
-      try {
-        // Chama a nossa API (Edge Function) que criamos e publicamos
-        const { data, error } = await supabase.functions.invoke('get-lista-envios');
-        
-        if (error) {
-          throw error; // Joga o erro para o bloco catch
-        }
+    try {
+      const { data, error } = await supabase.functions.invoke('get-lista-envios');
+      
+      if (error) throw error;
 
-        // Limpa o container
-        container.innerHTML = '';
-        
-        if (!data.envios || data.envios.length === 0) {
-          container.innerHTML = '<div class="no-data"><p>Nenhum envio encontrado.</p></div>';
-          return;
-        }
-
-        // Para cada envio retornado, cria um "menu-card"
-        data.envios.forEach(envio => {
-          const card = document.createElement('a');
-          card.href = '#'; // Provisoriamente. Depois levará para os detalhes do envio.
-          card.className = 'menu-card';
-
-          // Adiciona o conteúdo dentro do card
-          // Sinta-se à vontade para mudar quais campos do "envio" você quer mostrar
-          card.innerHTML = `
-            <div class="card-title">${envio.nome_cliente || 'Cliente não informado'}</div>
-            <div class="card-info">Valor: R$ ${envio.valor_venda || '0,00'}</div>
-          `;
-          
-          container.appendChild(card);
-        });
-
-      } catch (error) {
-        container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
-        console.error('Erro ao invocar a função:', error);
+      container.innerHTML = '';
+      
+      if (!data.janelas || data.janelas.length === 0) {
+        container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada.</p></div>';
+        return;
       }
-    }
 
-    // 3. CHAMA A FUNÇÃO QUANDO A PÁGINA ESTIVER PRONTA
-    document.addEventListener('DOMContentLoaded', () => {
-      carregarEnvios();
-    });
-  </script>
+      // LÓGICA ATUALIZADA:
+      // Agora, iteramos sobre a lista de janelas únicas
+      data.janelas.forEach(janela => {
+        const card = document.createElement('a');
+        
+        // Preparamos o link para o futuro. Ele levará para uma página
+        // que mostrará apenas as vendas desta janela.
+        card.href = `vendas.html?janela=${encodeURIComponent(janela)}`; 
+        card.className = 'menu-card';
+        card.textContent = janela; // O texto do card é o nome da janela
+        
+        container.appendChild(card);
+      });
+
+    } catch (error) {
+      container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
+      console.error('Erro ao invocar a função:', error);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarMenuDeColeta();
+  });
+</script>
 </body>
 </html>
