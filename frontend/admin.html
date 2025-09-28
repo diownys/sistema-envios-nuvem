@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do Administrador</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+    .container { max-width: 1200px; margin: auto; }
+    .header { margin-bottom: 2rem; }
+    .header a { color: #007bff; text-decoration: none; font-weight: bold; }
+    h1, h2 { color: #333; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; margin-bottom: 2rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
+    .form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .input-group { margin-bottom: 1rem; }
+    input, select, button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+    button { background-color: #28a745; color: white; font-weight: bold; cursor: pointer; }
+    .message { min-height: 1.2em; margin-top: 1rem; font-weight: bold; }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="/index.html">&larr; Voltar para o Menu Principal</a>
+      <h1>Painel do Administrador</h1>
+    </div>
+
+    <h2>Logs de Atividade</h2>
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Horário</th><th>Usuário (ID)</th><th>Ação</th><th>Venda (ID)</th></tr></thead>
+        <tbody id="logs-table-body"><tr><td colspan="4">Carregando logs...</td></tr></tbody>
+      </table>
+    </div>
+
+    <h2>Criar Novo Usuário</h2>
+    <div class="form-container">
+      <form id="create-user-form">
+        <div class="input-group"><input type="email" id="new-email" placeholder="E-mail do novo usuário" required></div>
+        <div class="input-group"><input type="password" id="new-password" placeholder="Senha temporária" required></div>
+        <div class="input-group">
+          <select id="new-role" required>
+            <option value="user">Funcionário (User)</option>
+            <option value="admin">Administrador (Admin)</option>
+          </select>
+        </div>
+        <button type="submit">Criar Usuário</button>
+      </form>
+      <div id="form-message" class="message"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = 'SUA_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Proteção de Página (Verifica se está logado E se é admin)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/login.html';
+        return;
+      }
+      const { data: isAdmin } = await supabase.rpc('is_admin');
+      if (!isAdmin) {
+        alert('Acesso negado. Esta área é apenas para administradores.');
+        window.location.href = '/index.html';
+        return;
+      }
+
+      // 2. Se for admin, carrega os logs e prepara o formulário
+      await carregarLogs();
+      setupCreateUserForm();
+    });
+
+    async function carregarLogs() {
+      const tableBody = document.getElementById('logs-table-body');
+      const { data, error } = await supabase.from('activity_log').select('*').order('created_at', { ascending: false });
+      if (error) {
+        tableBody.innerHTML = `<tr><td colspan="4">Erro ao carregar logs: ${error.message}</td></tr>`;
+        return;
+      }
+      tableBody.innerHTML = '';
+      data.forEach(log => {
+        tableBody.innerHTML += `
+          <tr>
+            <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
+            <td>${log.user_id}</td>
+            <td>${log.action}</td>
+            <td>${log.envio_id}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function setupCreateUserForm() {
+      const form = document.getElementById('create-user-form');
+      const messageDiv = document.getElementById('form-message');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const email = document.getElementById('new-email').value;
+        const password = document.getElementById('new-password').value;
+        const role = document.getElementById('new-role').value;
+        
+        messageDiv.textContent = 'Criando usuário...';
+        messageDiv.className = 'message';
+
+        const { data, error } = await supabase.functions.invoke('create-user', {
+          body: { email, password, role }
+        });
+
+        if (error) {
+          messageDiv.textContent = `Erro: ${error.message}`;
+          messageDiv.className = 'message error';
+        } else {
+          messageDiv.textContent = data.message;
+          messageDiv.className = 'message success';
+          form.reset();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
