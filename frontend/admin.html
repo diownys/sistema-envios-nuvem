@@ -84,25 +84,28 @@
 
 // Arquivo: frontend/admin.html (substitua a função carregarLogs)
 
+// Arquivo: frontend/admin.html (substitua a função carregarLogs)
+
 async function carregarLogs() {
   const tableBody = document.getElementById('logs-table-body');
   
-  // Chamando a função de TESTE que não toca nos seus dados
-  const { data, error } = await supabase.rpc('test_return_data');
+  // MUDANÇA FINAL: Chamando a EDGE FUNCTION em vez do RPC
+  const { data, error } = await supabase.functions.invoke('get-admin-logs');
 
   if (error) {
-    tableBody.innerHTML = `<tr><td colspan="5">Erro até mesmo na função de teste: ${error.message}</td></tr>`;
-    console.error('Erro RPC (teste de dados):', error);
+    tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
+    console.error('Erro na Edge Function:', error);
     return;
   }
 
   tableBody.innerHTML = '';
-  if (!data || data.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="5">A função de teste não retornou dados.</td></tr>`;
+  if (!data.logs || data.logs.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="5">Nenhum log de atividade encontrado.</td></tr>`;
     return;
   }
   
-  data.forEach(log => {
+  // O resto do código permanece igual, pois os nomes das colunas são os mesmos
+  data.logs.forEach(log => {
     tableBody.innerHTML += `
       <tr>
         <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
