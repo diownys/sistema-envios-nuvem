@@ -1,9 +1,9 @@
-// Arquivo: supabase/functions/update-envio/index.ts (VERSÃO ATUALIZADA)
+// Arquivo: supabase/functions/update-envio/index.ts (VERSÃO CORRIGIDA)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-// --- NOVA FUNÇÃO AUXILIAR (mesma de antes) ---
+// --- FUNÇÃO AUXILIAR DE LOGO (igual à da outra função) ---
 const removeAccents = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 const getLogoUrl = (janelaColeta: string | null): string | null => {
@@ -21,14 +21,19 @@ const getLogoUrl = (janelaColeta: string | null): string | null => {
 // --- FIM DA FUNÇÃO AUXILIAR ---
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') { return new Response('ok', { headers: corsHeaders }) }
+  // --- BLOCO DE CÓDIGO CORRIGIDO ---
+  // Responde à verificação de segurança (preflight) do navegador
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+  // --- FIM DO BLOCO CORRIGIDO ---
+
   try {
     const { id, updates } = await req.json()
     if (!id || !updates) throw new Error("ID e dados para atualização são obrigatórios.")
     
-    // --- LÓGICA AUTOMÁTICA DO LOGO ---
     if (updates.janela_coleta) {
-        updates.carrier_logo = getLogoUrl(updates.janela_coleta); // Atualiza o logo se a janela for alterada
+        updates.carrier_logo = getLogoUrl(updates.janela_coleta);
     }
     
     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '')

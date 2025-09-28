@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerar Romaneio de Coleta</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f9; margin: 0; }
+        .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #333; }
+        select, button { width: 100%; padding: 0.8rem; margin-top: 1rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        a { display: block; margin-top: 1rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerar Romaneio de Coleta</h1>
+        <form id="romaneio-form">
+            <select id="janela-select" name="janela_coleta" required>
+                <option value="">Carregando janelas...</option>
+            </select>
+            <button type="submit">Gerar Documento</button>
+        </form>
+        <a href="/index.html">Voltar ao Dashboard</a>
+    </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const selectElement = document.getElementById('janela-select');
+    const formElement = document.getElementById('romaneio-form');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Proteção de página
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { window.location.href = '/login.html'; return; }
+        
+        // Popula o menu dropdown com as janelas disponíveis
+        try {
+            const { data, error } = await supabase.functions.invoke('get-lista-envios');
+            if (error) throw error;
+            
+            selectElement.innerHTML = '<option value="">Selecione a Janela de Coleta</option>';
+            if (data.janelas && data.janelas.length > 0) {
+                data.janelas.forEach(janela => {
+                    selectElement.innerHTML += `<option value="${janela}">${janela}</option>`;
+                });
+            }
+        } catch (error) {
+            selectElement.innerHTML = '<option value="">Erro ao carregar janelas</option>';
+            console.error('Erro:', error);
+        }
+    });
+
+    formElement.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const selectedJanela = selectElement.value;
+        if (!selectedJanela) {
+            alert('Por favor, selecione uma janela de coleta.');
+            return;
+        }
+
+        const submitButton = event.target.querySelector('button');
+        submitButton.textContent = 'Gerando...';
+
+        try {
+            const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
+                body: { janela_coleta: selectedJanela },
+                responseType: 'text'
+            });
+
+            if (error) throw error;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlString);
+            printWindow.document.close();
+            printWindow.print();
+        } catch (error) {
+            alert(`Erro ao gerar romaneio: ${error.message}`);
+        } finally {
+            submitButton.textContent = 'Gerar Documento';
+        }
+    });
+</script>
+</body>
+</html>
