@@ -40,46 +40,40 @@
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+    const SUPABASE_URL = 'SUA_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const tableBody = document.getElementById('vendas-table-body');
 
+    // ... (A função document.addEventListener e carregarVendas continuam EXATAMENTE IGUAIS) ...
     document.addEventListener('DOMContentLoaded', async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             window.location.href = '/login.html';
             return;
         }
-
         const params = new URLSearchParams(window.location.search);
         const janelaColeta = params.get('janela');
-
         if (!janelaColeta) {
             document.getElementById('titulo-janela').textContent = "Erro: Janela não especificada.";
             return;
         }
-
         document.getElementById('titulo-janela').textContent = `Vendas da Janela: ${janelaColeta}`;
         await carregarVendas(janelaColeta);
     });
 
     async function carregarVendas(janela) {
         try {
-            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', {
-                body: { janela: janela }
-            });
+            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { body: { janela: janela } });
             if (error) throw error;
             tableBody.innerHTML = '';
-
             if (!data.vendas || data.vendas.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="4">Nenhuma venda encontrada para esta janela.</td></tr>';
                 return;
             }
-
             data.vendas.forEach(venda => {
-                const row = `
+                tableBody.innerHTML += `
                     <tr>
                         <td>${venda.cliente_nome || 'N/A'}</td>
                         <td>R$ ${venda.valor_venda || '0,00'}</td>
@@ -87,7 +81,6 @@
                         <td><a href="#" class="action-button" data-venda-id="${venda.id}">Gerar Etiqueta</a></td>
                     </tr>
                 `;
-                tableBody.innerHTML += row;
             });
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="4">Erro ao carregar vendas: ${error.message}</td></tr>`;
@@ -95,36 +88,40 @@
         }
     }
 
-    // ---- NOVA LÓGICA PARA O CLIQUE NO BOTÃO ----
+    // A MUDANÇA ESTÁ AQUI: a lógica de clique no botão
     tableBody.addEventListener('click', async (event) => {
-        // Verifica se o clique foi em um botão com a classe 'action-button'
         if (event.target && event.target.matches('a.action-button')) {
             event.preventDefault();
             
             const vendaId = event.target.dataset.vendaId;
-            const clienteNome = event.target.closest('tr').cells[0].textContent;
+            const originalText = event.target.textContent;
+            event.target.textContent = 'Gerando...';
 
-            if (confirm(`Deseja realmente gerar a etiqueta para ${clienteNome}?`)) {
-                try {
-                    const { data, error } = await supabase.functions.invoke('gerar-etiqueta', {
-                        body: { envio_id: parseInt(vendaId) }
-                    });
+            try {
+                // Aqui usamos o { responseType: 'text' } para dizer que esperamos um HTML
+                const { data: htmlString, error } = await supabase.functions.invoke('gerar-etiqueta', {
+                    body: { envio_id: parseInt(vendaId) },
+                    responseType: 'text' 
+                });
 
-                    if (error) throw error;
+                if (error) throw error;
 
-                    alert(`Ação registrada: Etiqueta para ${clienteNome} gerada com sucesso!`);
-                    // Opcional: mudar a aparência do botão/linha para indicar que foi feito
-                    event.target.style.backgroundColor = '#28a745'; // Verde
-                    event.target.textContent = 'Gerada';
+                // Abre uma nova janela, escreve o HTML recebido e chama a impressão
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(htmlString);
+                printWindow.document.close();
+                printWindow.print();
+                
+                event.target.style.backgroundColor = '#28a745';
+                event.target.textContent = 'Gerada';
 
-                } catch (error) {
-                    alert(`Erro ao registrar ação: ${error.message}`);
-                    console.error('Erro:', error);
-                }
+            } catch (error) {
+                alert(`Erro ao gerar etiqueta: ${error.message}`);
+                console.error('Erro:', error);
+                event.target.textContent = originalText;
             }
         }
     });
-
 </script>
 </body>
 </html>
