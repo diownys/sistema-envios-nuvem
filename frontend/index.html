@@ -64,8 +64,9 @@
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = 'SUA_SUPABASE_URL'; 
-    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     document.addEventListener('DOMContentLoaded', async () => {
