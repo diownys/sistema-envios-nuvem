@@ -106,7 +106,6 @@
             carregarLogs(currentPage, currentSearchTerm);
         }
       });
-
       nextButton.addEventListener('click', () => {
         if (currentPage < totalPages) {
             currentPage++;
@@ -130,12 +129,9 @@
         const email = document.getElementById('new-email').value;
         const password = document.getElementById('new-password').value;
         const role = document.getElementById('new-role').value;
-        
         messageDiv.textContent = 'Criando usuário...';
         messageDiv.className = 'message';
-
         const { data, error } = await supabase.functions.invoke('create-user', { body: { email, password, role } });
-
         if (error) {
           messageDiv.textContent = `Erro: ${error.message}`;
           messageDiv.className = 'message error';
@@ -155,14 +151,16 @@
       tableBody.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
       
       try {
-        const { data, error } = await supabase.rpc('get_paginated_logs', { page_number: page, search_term: searchTerm });
+        const { data, error } = await supabase.functions.invoke('get-admin-paginated-logs', { 
+            body: { page_number: page, search_term: searchTerm }
+        });
         if (error) throw error;
         
-        const totalCount = data.length > 0 ? data[0].total_count : 0;
+        const totalCount = data.totalCount || 0;
         totalPages = Math.ceil(totalCount / 10);
         if (totalPages === 0) totalPages = 1;
         
-        renderTable(data);
+        renderTable(data.logs);
         pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
         prevButton.disabled = currentPage <= 1;
         nextButton.disabled = currentPage >= totalPages;
@@ -182,10 +180,10 @@
         tableBody.innerHTML += `
           <tr>
             <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-            <td>${log.user_email}</td>
+            <td>${log.user_email || 'N/A'}</td>
             <td>${log.action}</td>
-            <td>${log.cliente_nome}</td>
-            <td>${log.codigo_venda}</td>
+            <td>${log.cliente_nome || 'N/A'}</td>
+            <td>${log.codigo_venda || 'N/A'}</td>
           </tr>
         `;
       });
