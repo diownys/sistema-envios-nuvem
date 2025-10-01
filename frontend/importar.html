@@ -62,30 +62,31 @@
         Papa.parse(file, {
             header: true, // Converte as linhas em objetos usando o cabeçalho
             skipEmptyLines: true,
-            complete: async (results) => {
-                messageDiv.textContent = `Enviando ${results.data.length} registros para o servidor...`;
-                try {
-                    const { data, error } = await supabase.functions.invoke('import-planilha', {
-                        body: results.data
-                    });
-                    if (error) throw error;
-                    messageDiv.textContent = data.message;
-                    messageDiv.className = 'message success';
-                    form.reset();
-                } catch (error) {
-                    messageDiv.textContent = `Erro: ${error.message}`;
-                    messageDiv.className = 'message error';
-                } finally {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Enviar Arquivo';
-                }
-            },
-            error: (err) => {
-                messageDiv.textContent = `Erro ao ler o arquivo: ${err.message}`;
+            delimiter: ";",
+        complete: async (results) => {
+            messageDiv.textContent = `Enviando ${results.data.length} registros para o servidor...`;
+            try {
+                const { data, error } = await supabase.functions.invoke('import-planilha', {
+                    body: results.data
+                });
+                if (error) throw error;
+                messageDiv.textContent = data.message;
+                messageDiv.className = 'message success';
+                form.reset();
+            } catch (error) {
+                messageDiv.textContent = `Erro: ${error.message}`;
                 messageDiv.className = 'message error';
+            } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = 'Enviar Arquivo';
             }
+        },
+        error: (err) => {
+            messageDiv.textContent = `Erro ao ler o arquivo: ${err.message}`;
+            messageDiv.className = 'message error';
+            submitButton.disabled = false;
+            submitButton.textContent = 'Enviar Arquivo';
+        }
         });
     });
 </script>
