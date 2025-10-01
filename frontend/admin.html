@@ -20,7 +20,7 @@
     th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
     .form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     .input-group { margin-bottom: 1rem; }
-    input, select, button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+    input, select, .form-container button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
     .form-container button { background-color: #28a745; color: white; font-weight: bold; cursor: pointer; }
     .message { min-height: 1.2em; margin-top: 1rem; font-weight: bold; }
     .success { color: #28a745; }
@@ -46,7 +46,7 @@
     <div class="table-container">
       <table>
         <thead><tr><th>Horário</th><th>Usuário</th><th>Ação</th><th>Cliente</th><th>Cód. Venda</th></tr></thead>
-        <tbody id="logs-table-body"><tr><td colspan="5">Carregando logs...</td></tr></tbody>
+        <tbody id="logs-table-body"></tbody>
       </table>
     </div>
 
@@ -69,17 +69,16 @@
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    // ⚠️ SUBSTITUA PELAS SUAS CHAVES REAIS AQUI
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Variáveis de estado para paginação e busca
     let currentPage = 1;
     let totalPages = 1;
     let currentSearchTerm = '';
 
-    // Função principal que roda quando a página carrega
     document.addEventListener('DOMContentLoaded', async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = '/login.html'; return; }
@@ -95,13 +94,11 @@
       carregarLogs(currentPage, currentSearchTerm);
     });
     
-    // Função para configurar todos os eventos da página
     function setupEventListeners() {
       const searchInput = document.getElementById('log-search-input');
       const prevButton = document.getElementById('prev-page-button');
       const nextButton = document.getElementById('next-page-button');
       const createUserForm = document.getElementById('create-user-form');
-      const messageDiv = document.getElementById('form-message');
 
       prevButton.addEventListener('click', () => {
         if (currentPage > 1) {
@@ -129,6 +126,7 @@
 
       createUserForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        const messageDiv = document.getElementById('form-message');
         const email = document.getElementById('new-email').value;
         const password = document.getElementById('new-password').value;
         const role = document.getElementById('new-role').value;
@@ -149,7 +147,6 @@
       });
     }
 
-    // Função para carregar os logs com paginação e busca
     async function carregarLogs(page = 1, searchTerm = '') {
       const tableBody = document.getElementById('logs-table-body');
       const pageInfo = document.getElementById('page-info');
@@ -158,14 +155,12 @@
       tableBody.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
       
       try {
-        const { data: totalCount, error: countError } = await supabase.rpc('get_detailed_activity_logs_count', { search_term: searchTerm });
-        if (countError) throw countError;
+        const { data, error } = await supabase.rpc('get_paginated_logs', { page_number: page, search_term: searchTerm });
+        if (error) throw error;
         
+        const totalCount = data.length > 0 ? data[0].total_count : 0;
         totalPages = Math.ceil(totalCount / 10);
         if (totalPages === 0) totalPages = 1;
-        
-        const { data, error } = await supabase.rpc('get_detailed_activity_logs', { page_number: page, search_term: searchTerm });
-        if (error) throw error;
         
         renderTable(data);
         pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
