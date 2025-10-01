@@ -1,16 +1,20 @@
-// Arquivo: supabase/functions/import-excel/index.ts
+// Arquivo: supabase/functions/import-excel/index.ts (VERSÃO FINAL PARA CSV)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
-import * as xlsx from 'https://esm.sh/xlsx@0.18.5'
+import { parse } from "https://deno.land/std@0.208.0/csv/mod.ts";
 
-// ... (as funções auxiliares removeAccents e getLogoUrl continuam as mesmas) ...
+// Funções auxiliares (sem alteração)
 const removeAccents = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : '';
 const getLogoUrl = (janela: string | null): string | null => {
     if (!janela) return null;
     const n = removeAccents(janela.toLowerCase());
     if (n.includes('agile')) return 'https://i.imgur.com/GR1yJvH.png';
     if (n.includes('mota')) return 'https://i.imgur.com/PTFnNod.jpeg';
-    // Adicione outras regras de logo aqui...
+    if (n.includes('moovway')) return 'https://i.imgur.com/SzhYJKo.png';
+    if (n.includes('expresso sao miguel')) return 'https://i.imgur.com/8C151J6.png';
+    if (n.includes('braspress')) return 'https://i.imgur.com/xKxvPRy.png';
+    if (n.includes('ice cargo')) return 'https://i.imgur.com/xkWFlz8.jpeg';
+    if (n.includes('retirada')) return 'https://i.imgur.com/4GbUFIi.png';
     return null;
 };
 
@@ -23,34 +27,51 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Usuário não autenticado.");
 
-    // Lê o arquivo Excel (xlsx) enviado
-    const buffer = await req.arrayBuffer();
-    const workbook = xlsx.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const vendas = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+    // Lê o arquivo como texto puro (CSV)
+    const csvText = await req.text();
 
-    // Pega os cabeçalhos (primeira linha)
-    const headers: string[] = vendas.shift() as string[];
+    // Usa a biblioteca Deno para processar o CSV com ponto e vírgula
+    const vendas = parse(csvText, {
+        separator: ";",
+        skipFirstRow: true, // Pula a linha do cabeçalho
+        // Mapeia as colunas pela ordem em que aparecem
+        columns: [
+            'ID PEDIDO', 'NOME CLIENTE', 'CODIGO VENDA', 'ORDEM MANIPULACAO', 'VALOR VENDA',
+            'ENDERECO', 'CIDADE', 'UF', 'JANELA DE COLETA', 'REQUER REFRIGERACAO',
+            'LOCAL ENTREGA', 'FORMA FARMACEUTICA', 'NUMERO NOTA', 'TRANSPORTADORA',
+            'VALOR FRETE', 'CUSTO FRETE', 'TIPO FRETE', 'VOLUMES'
+        ]
+    });
 
-    // Mapeia os dados usando os cabeçalhos
-    const dadosParaInserir = vendas.map((row: any[]) => {
-        const venda: { [key: string]: any } = {};
-        headers.forEach((header, index) => {
-            venda[header] = row[index];
-        });
-
-        const valorLimpo = String(venda['VALOR VENDA'] || '0').replace(/[^0-9,]/g, '').replace(',', '.');
-        const valorNumerico = parseFloat(valorLimpo);
-
+    if (vendas.length === 0) {
+      throw new Error("Nenhuma linha de dados encontrada no arquivo CSV.");
+    }
+    
+    const dadosParaInserir = (vendas as Array<Record<string, string>>).map(venda => {
+        const valorOriginal = venda['VALOR VENDA'];
+        let valorNumerico = 0;
+        if (valorOriginal) {
+            if (typeof valorOriginal === 'number') { valorNumerico = valorOriginal; }
+            else if (typeof valorOriginal === 'string') {
+                const valorLimpo = valorOriginal.replace(/[^0-9,]/g, '').replace(',', '.');
+                valorNumerico = parseFloat(valorLimpo);
+            }
+        }
+        
         return {
             codigo_venda: venda['CODIGO VENDA'],
             cliente_nome: venda['NOME CLIENTE'],
-            // ... (resto do mapeamento que já fizemos) ...
             valor_venda: isNaN(valorNumerico) ? 0 : valorNumerico,
-            volumes: parseInt(venda['VOLUMES'], 10) || 1,
+            local_entrega: venda['LOCAL ENTREGA'],
+            forma_farmaceutica: venda['FORMA FARMACEUTICA'],
+            cidade: venda['CIDADE'],
+            uf: venda['UF'],
+            requer_refrigeracao: String(venda['REQUER REFRIGERACAO'] || '').toLowerCase() === 'sim',
+            ordem_manipulacao: venda['ORDEM MANIPULACAO'],
             janela_coleta: venda['JANELA DE COLETA'],
-            // Dados automáticos
+            volumes: parseInt(venda['VOLUMES'], 10) || 1,
+            endereco: venda['ENDERECO'],
+            numero_nota: venda['NUMERO NOTA'],
             user_id: user.id,
             carrier_logo: getLogoUrl(venda['JANELA DE COLETA']),
             status: 'Pendente'
@@ -58,7 +79,7 @@ Deno.serve(async (req) => {
     }).filter(v => v.codigo_venda);
 
     if (dadosParaInserir.length === 0) {
-        throw new Error("Nenhuma linha válida encontrada na planilha para importar.");
+      throw new Error("Nenhuma linha válida encontrada. Verifique se a coluna 'CODIGO VENDA' está preenchida.");
     }
 
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
