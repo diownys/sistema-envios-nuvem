@@ -215,11 +215,19 @@
 
         function stopScanner() {
             if (isScannerRunning) {
-                html5Qr-code.stop().then(() => {
+                // AQUI ESTAVA O ERRO: html5Qr-code virou html5QrCode
+                html5QrCode.stop().then(() => {
+                    qrReaderDiv.style.display = 'none';
+                    scanButton.textContent = 'Escanear';
+                    isScannerRunning = false;
+                }).catch(err => {
+                    console.error("Falha ao parar o scanner, mas continuando...", err);
+                    // Força a UI a fechar mesmo se a biblioteca der um erro ao parar
                     qrReaderDiv.style.display = 'none';
                     scanButton.textContent = 'Escanear';
                     isScannerRunning = false;
                 });
+
             }
         }
 
