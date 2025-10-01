@@ -1,4 +1,4 @@
-// Arquivo: supabase/functions/get-admin-paginated-logs/index.ts
+// Arquivo: supabase/functions/get-admin-paginated-logs/index.ts (VERSÃO CORRIGIDA)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -13,40 +13,41 @@ Deno.serve(async (req) => {
     const pageSize = 10;
     const offset = (page_number - 1) * pageSize;
 
+    // --- CORREÇÃO PRINCIPAL AQUI ---
+    // Cria um cliente com o token do usuário para verificar a permissão de admin
+    const authHeader = req.headers.get('Authorization')!;
+    const jwt = authHeader.replace('Bearer ', '');
+    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: `Bearer ${jwt}` } } });
+
+    // Usa a nossa função RPC `is_admin()` que já funciona
+    const { data: isAdmin, error: rpcError } = await supabaseClient.rpc('is_admin');
+    if (rpcError || !isAdmin) {
+      throw new Error("Acesso negado: apenas administradores podem ver os logs.");
+    }
+    // --- FIM DA CORREÇÃO ---
+
+    // Agora, usa o cliente com poderes de admin para buscar os dados
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    // VERIFICA SE O USUÁRIO É ADMIN
-    const authHeader = req.headers.get('Authorization')!;
-    const jwt = authHeader.replace('Bearer ', '');
-    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: `Bearer ${jwt}` } } });
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user?.user_metadata?.is_admin !== true) {
-      throw new Error("Acesso negado.");
-    }
-
-    // Constrói a consulta principal
     let query = supabaseAdmin.from('activity_log').select(`
       created_at,
       action,
       profiles ( email ),
       envios ( cliente_nome, codigo_venda )
-    `, { count: 'exact' }); // Pede para contar o total de registros
+    `, { count: 'exact' });
 
-    // Adiciona o filtro de busca se existir
     if (search_term) {
       query = query.or(`profiles.email.ilike.%${search_term}%,envios.cliente_nome.ilike.%${search_term}%,envios.codigo_venda.ilike.%${search_term}%`);
     }
 
-    // Adiciona a ordenação e paginação
     query = query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
 
     const { data, error, count } = await query;
     if (error) throw error;
 
-    // Formata os dados para ficarem mais fáceis de usar no frontend
     const formattedData = data.map(log => ({
         created_at: log.created_at,
         action: log.action,

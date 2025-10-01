@@ -143,51 +143,34 @@
       });
     }
 
-    async function carregarLogs(page = 1, searchTerm = '') {
-      const tableBody = document.getElementById('logs-table-body');
-      const pageInfo = document.getElementById('page-info');
-      const prevButton = document.getElementById('prev-page-button');
-      const nextButton = document.getElementById('next-page-button');
-      tableBody.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('get-admin-paginated-logs', { 
-            body: { page_number: page, search_term: searchTerm }
-        });
-        if (error) throw error;
-        
-        const totalCount = data.totalCount || 0;
-        totalPages = Math.ceil(totalCount / 10);
-        if (totalPages === 0) totalPages = 1;
-        
-        renderTable(data.logs);
-        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
-        prevButton.disabled = currentPage <= 1;
-        nextButton.disabled = currentPage >= totalPages;
-      } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
-      }
-    }
+async function carregarLogs(page = 1, searchTerm = '') {
+  const tableBody = document.getElementById('logs-table-body');
+  const pageInfo = document.getElementById('page-info');
+  const prevButton = document.getElementById('prev-page-button');
+  const nextButton = document.getElementById('next-page-button');
+  tableBody.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
+  
+  try {
+    // A MUDANÇA ESTÁ AQUI: Voltamos a usar a função RPC, que agora funciona.
+    const { data, error } = await supabase.rpc('get_paginated_logs', { 
+        page_number: page, 
+        search_term: searchTerm 
+    });
+    if (error) throw error;
     
-    function renderTable(logs) {
-      const tableBody = document.getElementById('logs-table-body');
-      tableBody.innerHTML = '';
-      if (!logs || logs.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5">Nenhum log encontrado.</td></tr>`;
-        return;
-      }
-      logs.forEach(log => {
-        tableBody.innerHTML += `
-          <tr>
-            <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-            <td>${log.user_email || 'N/A'}</td>
-            <td>${log.action}</td>
-            <td>${log.cliente_nome || 'N/A'}</td>
-            <td>${log.codigo_venda || 'N/A'}</td>
-          </tr>
-        `;
-      });
-    }
+    const totalCount = data.length > 0 ? data[0].total_count : 0;
+    totalPages = Math.ceil(totalCount / 10);
+    if (totalPages === 0) totalPages = 1;
+    
+    renderTable(data);
+    pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+    prevButton.disabled = currentPage <= 1;
+    nextButton.disabled = currentPage >= totalPages;
+  } catch (error) {
+    tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
+    console.error("Erro ao carregar logs:", error);
+  }
+}
 </script>
 </body>
 </html>
