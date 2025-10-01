@@ -7,19 +7,17 @@
   <style>
     body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
     .container { max-width: 1200px; margin: auto; }
-    .header { margin-bottom: 2rem; }
     .header a { color: #007bff; text-decoration: none; font-weight: bold; }
     h1, h2 { color: #333; }
+    .controls-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
+    #log-search-input { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; width: 300px; }
+    .pagination-controls { display: flex; align-items: center; gap: 0.5rem; }
+    .pagination-controls button { padding: 0.5rem 1rem; cursor: pointer; }
+    .pagination-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
     .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; margin-bottom: 2rem; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
-    .form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .input-group { margin-bottom: 1rem; }
-    input, select, button { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-    button { background-color: #28a745; color: white; font-weight: bold; cursor: pointer; }
-    .message { min-height: 1.2em; margin-top: 1rem; font-weight: bold; }
-    .success { color: #28a745; }
-    .error { color: #dc3545; }
+    .form-container { background: white; padding: 2rem; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -30,120 +28,133 @@
     </div>
 
     <h2>Logs de Atividade</h2>
+    <div class="controls-container">
+        <input type="text" id="log-search-input" placeholder="Buscar nos logs...">
+        <div class="pagination-controls">
+            <button id="prev-page-button">&larr; Anterior</button>
+            <span id="page-info">Página 1 de 1</span>
+            <button id="next-page-button">Próxima &rarr;</button>
+        </div>
+    </div>
     <div class="table-container">
       <table>
-        <thead><tr><th>Horário</th><th>Usuário</th><th>Ação</th><th>Cliente</th></tr></thead>
-        <tbody id="logs-table-body"><tr><td colspan="4">Carregando logs...</td></tr></tbody>
+        <thead><tr><th>Horário</th><th>Usuário</th><th>Ação</th><th>Cliente</th><th>Cód. Venda</th></tr></thead>
+        <tbody id="logs-table-body"><tr><td colspan="5">Carregando logs...</td></tr></tbody>
       </table>
     </div>
 
     <h2>Criar Novo Usuário</h2>
     <div class="form-container">
-      <form id="create-user-form">
-        <div class="input-group"><input type="email" id="new-email" placeholder="E-mail do novo usuário" required></div>
-        <div class="input-group"><input type="password" id="new-password" placeholder="Senha temporária" required></div>
-        <div class="input-group">
-          <select id="new-role" required>
-            <option value="user">Funcionário (User)</option>
-            <option value="admin">Administrador (Admin)</option>
-          </select>
-        </div>
-        <button type="submit">Criar Usuário</button>
-      </form>
-      <div id="form-message" class="message"></div>
-    </div>
+      </div>
   </div>
 
-  <script type="module">
+<script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
-
+    const SUPABASE_URL = 'SUA_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Proteção de Página (Verifica se está logado E se é admin)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = '/login.html';
+    // Variáveis de estado para paginação e busca
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentSearchTerm = '';
+
+    // Elementos da UI
+    const tableBody = document.getElementById('logs-table-body');
+    const searchInput = document.getElementById('log-search-input');
+    const prevButton = document.getElementById('prev-page-button');
+    const nextButton = document.getElementById('next-page-button');
+    const pageInfo = document.getElementById('page-info');
+    
+    // Função principal para carregar os logs
+    async function carregarLogs(page = 1, searchTerm = '') {
+      tableBody.innerHTML = `<tr><td colspan="5">Carregando...</td></tr>`;
+      
+      try {
+        // Chamada 1: Buscar o total de registros
+        const { data: totalCount, error: countError } = await supabase.rpc('get_detailed_activity_logs_count', { search_term: searchTerm });
+        if (countError) throw countError;
+        
+        totalPages = Math.ceil(totalCount / 10);
+        if (totalPages === 0) totalPages = 1;
+        
+        // Chamada 2: Buscar os dados da página atual
+        const { data, error } = await supabase.rpc('get_detailed_activity_logs', { page_number: page, search_term: searchTerm });
+        if (error) throw error;
+        
+        renderTable(data);
+        updatePaginationControls();
+      } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
+        console.error('Erro RPC:', error);
+      }
+    }
+    
+    function renderTable(logs) {
+      tableBody.innerHTML = '';
+      if (!logs || logs.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5">Nenhum log encontrado para os filtros aplicados.</td></tr>`;
         return;
       }
+      logs.forEach(log => {
+        tableBody.innerHTML += `
+          <tr>
+            <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
+            <td>${log.user_email}</td>
+            <td>${log.action}</td>
+            <td>${log.cliente_nome}</td>
+            <td>${log.codigo_venda}</td>
+          </tr>
+        `;
+      });
+    }
+
+    function updatePaginationControls() {
+        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+        prevButton.disabled = currentPage <= 1;
+        nextButton.disabled = currentPage >= totalPages;
+    }
+    
+    // Event Listeners
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            carregarLogs(currentPage, currentSearchTerm);
+        }
+    });
+
+    nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            carregarLogs(currentPage, currentSearchTerm);
+        }
+    });
+
+    let searchTimeout;
+    searchInput.addEventListener('input', (event) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentSearchTerm = event.target.value;
+            currentPage = 1; // Reseta para a primeira página a cada nova busca
+            carregarLogs(currentPage, currentSearchTerm);
+        }, 300); // Debounce de 300ms para não fazer uma busca a cada tecla
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Proteção de página (admin check)
+      // ... (seu código de verificação de admin e setup do formulário de criar usuário continua aqui) ...
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = '/login.html'; return; }
       const { data: isAdmin } = await supabase.rpc('is_admin');
       if (!isAdmin) {
         alert('Acesso negado. Esta área é apenas para administradores.');
         window.location.href = '/index.html';
         return;
       }
-
-      // 2. Se for admin, carrega os logs e prepara o formulário
-      await carregarLogs();
-      setupCreateUserForm();
+      
+      // Carrega os logs iniciais
+      carregarLogs(currentPage, currentSearchTerm);
     });
-
-// Arquivo: frontend/admin.html (substitua a função carregarLogs)
-
-// Arquivo: frontend/admin.html (substitua a função carregarLogs)
-
-// Arquivo: frontend/admin.html (substitua a função carregarLogs)
-
-async function carregarLogs() {
-  const tableBody = document.getElementById('logs-table-body');
-  
-  // MUDANÇA FINAL: Chamando a EDGE FUNCTION em vez do RPC
-  const { data, error } = await supabase.functions.invoke('get-admin-logs');
-
-  if (error) {
-    tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar logs: ${error.message}</td></tr>`;
-    console.error('Erro na Edge Function:', error);
-    return;
-  }
-
-  tableBody.innerHTML = '';
-  if (!data.logs || data.logs.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="5">Nenhum log de atividade encontrado.</td></tr>`;
-    return;
-  }
-  
-  // O resto do código permanece igual, pois os nomes das colunas são os mesmos
-  data.logs.forEach(log => {
-    tableBody.innerHTML += `
-      <tr>
-        <td>${new Date(log.created_at).toLocaleString('pt-BR')}</td>
-        <td>${log.user_email}</td>
-        <td>${log.action}</td>
-        <td>${log.cliente_nome}</td>
-        <td>${log.codigo_venda}</td>
-      </tr>
-    `;
-  });
-}
-    function setupCreateUserForm() {
-      const form = document.getElementById('create-user-form');
-      const messageDiv = document.getElementById('form-message');
-
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const email = document.getElementById('new-email').value;
-        const password = document.getElementById('new-password').value;
-        const role = document.getElementById('new-role').value;
-        
-        messageDiv.textContent = 'Criando usuário...';
-        messageDiv.className = 'message';
-
-        const { data, error } = await supabase.functions.invoke('create-user', {
-          body: { email, password, role }
-        });
-
-        if (error) {
-          messageDiv.textContent = `Erro: ${error.message}`;
-          messageDiv.className = 'message error';
-        } else {
-          messageDiv.textContent = data.message;
-          messageDiv.className = 'message success';
-          form.reset();
-        }
-      });
-    }
-  </script>
+</script>
 </body>
 </html>
