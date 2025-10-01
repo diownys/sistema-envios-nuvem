@@ -1,4 +1,4 @@
-// Arquivo: supabase/functions/get-admin-paginated-logs/index.ts (VERSÃO CORRIGIDA)
+// Arquivo: supabase/functions/get-admin-paginated-logs/index.ts
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -13,25 +13,24 @@ Deno.serve(async (req) => {
     const pageSize = 10;
     const offset = (page_number - 1) * pageSize;
 
-    // --- CORREÇÃO PRINCIPAL AQUI ---
-    // Cria um cliente com o token do usuário para verificar a permissão de admin
+    // Cria um cliente com o token do usuário para verificar a permissão
     const authHeader = req.headers.get('Authorization')!;
     const jwt = authHeader.replace('Bearer ', '');
     const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', { global: { headers: { Authorization: `Bearer ${jwt}` } } });
 
-    // Usa a nossa função RPC `is_admin()` que já funciona
+    // Usa a função RPC `is_admin()` que já sabemos que funciona
     const { data: isAdmin, error: rpcError } = await supabaseClient.rpc('is_admin');
     if (rpcError || !isAdmin) {
       throw new Error("Acesso negado: apenas administradores podem ver os logs.");
     }
-    // --- FIM DA CORREÇÃO ---
 
-    // Agora, usa o cliente com poderes de admin para buscar os dados
+    // Usa o cliente com poderes de admin para buscar os dados
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
+    // Constrói a consulta principal
     let query = supabaseAdmin.from('activity_log').select(`
       created_at,
       action,
@@ -39,10 +38,12 @@ Deno.serve(async (req) => {
       envios ( cliente_nome, codigo_venda )
     `, { count: 'exact' });
 
+    // Adiciona o filtro de busca se existir
     if (search_term) {
-      query = query.or(`profiles.email.ilike.%${search_term}%,envios.cliente_nome.ilike.%${search_term}%,envios.codigo_venda.ilike.%${search_term}%`);
+      query = query.or(`profiles.email.ilike.%${search_term}%,envios.cliente_nome.ilike.%${search_term}%,envios.codigo_venda.ilike.%${search_term}%`, { foreignTable: 'profiles,envios' });
     }
 
+    // Adiciona a ordenação e paginação
     query = query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
 
     const { data, error, count } = await query;
