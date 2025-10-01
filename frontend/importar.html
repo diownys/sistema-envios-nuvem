@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Importar Envios</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f9; margin: 0; }
         .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
@@ -19,9 +18,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>Importar Planilha de Envios (.CSV)</h1>
+        <h1>Importar Planilha (.xlsx ou .csv)</h1>
         <form id="upload-form">
-            <input type="file" id="csv-file" accept=".csv" required>
+            <input type="file" id="spreadsheet-file" accept=".csv, .xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
             <button type="submit">Enviar Arquivo</button>
         </form>
         <div id="status-message" class="message"></div>
@@ -41,11 +40,11 @@
     });
 
     const form = document.getElementById('upload-form');
-    const fileInput = document.getElementById('csv-file');
+    const fileInput = document.getElementById('spreadsheet-file');
     const messageDiv = document.getElementById('status-message');
     const submitButton = form.querySelector('button');
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const file = fileInput.files[0];
         if (!file) {
@@ -55,39 +54,29 @@
         }
         
         submitButton.disabled = true;
-        submitButton.textContent = 'Processando...';
-        messageDiv.textContent = 'Lendo arquivo...';
+        submitButton.textContent = 'Enviando e processando...';
+        messageDiv.textContent = 'Aguarde, isso pode levar um momento...';
         messageDiv.className = 'message';
 
-        Papa.parse(file, {
-            header: true, // Converte as linhas em objetos usando o cabeçalho
-            skipEmptyLines: true,
-            delimiter: ";",
-        complete: async (results) => {
-            messageDiv.textContent = `Enviando ${results.data.length} registros para o servidor...`;
-            try {
-                const { data, error } = await supabase.functions.invoke('import-planilha', {
-                    body: results.data
-                });
-                if (error) throw error;
-                messageDiv.textContent = data.message;
-                messageDiv.className = 'message success';
-                form.reset();
-            } catch (error) {
-                messageDiv.textContent = `Erro: ${error.message}`;
-                messageDiv.className = 'message error';
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Enviar Arquivo';
-            }
-        },
-        error: (err) => {
-            messageDiv.textContent = `Erro ao ler o arquivo: ${err.message}`;
+        try {
+            // Envia o arquivo bruto para a nova função
+            const { data, error } = await supabase.functions.invoke('import-excel', {
+                body: file,
+                headers: { 'Content-Type': file.type }
+            });
+
+            if (error) throw error;
+            
+            messageDiv.textContent = data.message;
+            messageDiv.className = 'message success';
+            form.reset();
+        } catch (error) {
+            messageDiv.textContent = `Erro: ${error.message}`;
             messageDiv.className = 'message error';
+        } finally {
             submitButton.disabled = false;
             submitButton.textContent = 'Enviar Arquivo';
         }
-        });
     });
 </script>
 </body>
