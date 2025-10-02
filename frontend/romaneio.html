@@ -129,19 +129,16 @@ btnGerar.addEventListener('click', async () => {
         btnGerar.disabled = true;
         log(`Gerando romaneio para: ${janela}...`);
 
-        // --- CORREÇÃO NA LÓGICA DE DATAS ---
+        // --- CORREÇÃO AQUI: Lendo as datas dos inputs ---
         const startDateValue = start.value; // 'start' é o input da data de início
         const endDateValue = end.value;   // 'end' é o input da data de fim
 
-        // Pega a data de início no começo do dia (00:00)
+        // Converte as datas para o formato ISO, garantindo que o dia inteiro seja coberto
         const startOfDay = new Date(startDateValue + 'T00:00:00');
-
-        // Pega a data de fim, avança um dia e pega o começo daquele dia
-        const endOfDay = new Date(endDateValue + 'T00:00:00');
-        endOfDay.setDate(endOfDay.getDate() + 1);
+        const endOfDay = new Date(endDateValue + 'T23:59:59');
         // --- FIM DA CORREÇÃO ---
 
-        // Chama a função que gera o HTML, agora com o período de data 100% correto
+        // Chama a função que gera o HTML, agora com todos os parâmetros corretos
         const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
             body: { 
                 janela_coleta: janela,
@@ -150,6 +147,21 @@ btnGerar.addEventListener('click', async () => {
             },
             responseType: 'text'
         });
+
+        if (error) throw error;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(htmlString);
+        printWindow.document.close();
+        printWindow.print();
+        log(`Romaneio para "${janela}" gerado com sucesso.`);
+
+    } catch (e) {
+        log('Erro ao gerar documento: ' + (e?.message ?? e));
+    } finally {
+        btnGerar.disabled = false;
+    }
+});
 
     // Carrega as janelas do dia atual ao iniciar a página
     btnCarregar.click();
