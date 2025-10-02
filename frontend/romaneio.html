@@ -129,16 +129,19 @@ btnGerar.addEventListener('click', async () => {
         btnGerar.disabled = true;
         log(`Gerando romaneio para: ${janela}...`);
 
-        // --- CORREÇÃO AQUI: Lendo as datas dos inputs ---
+        // --- CORREÇÃO NA LÓGICA DE DATAS ---
         const startDateValue = start.value; // 'start' é o input da data de início
         const endDateValue = end.value;   // 'end' é o input da data de fim
 
-        // Converte as datas para o formato ISO, garantindo que o dia inteiro seja coberto
+        // Pega a data de início no começo do dia (00:00)
         const startOfDay = new Date(startDateValue + 'T00:00:00');
-        const endOfDay = new Date(endDateValue + 'T23:59:59');
+
+        // Pega a data de fim, avança um dia e pega o começo daquele dia
+        const endOfDay = new Date(endDateValue + 'T00:00:00');
+        endOfDay.setDate(endOfDay.getDate() + 1);
         // --- FIM DA CORREÇÃO ---
 
-        // Chama a função que gera o HTML, agora com todos os parâmetros corretos
+        // Chama a função que gera o HTML, agora com o período de data 100% correto
         const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
             body: { 
                 janela_coleta: janela,
