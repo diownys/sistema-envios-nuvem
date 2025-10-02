@@ -1,13 +1,11 @@
-// Arquivo: supabase/functions/gerar-romaneio/index.ts (VERSÃO ATUALIZADA)
+// Arquivo: supabase/functions/gerar-romaneio/index.ts (VERSÃO CORRIGIDA)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-// A função que gera o HTML não precisa mudar
-function gerarHtmlRomaneio(envios: any[], janelaColeta: string, startDate: string, endDate: string): string {
+function gerarHtmlRomaneio(envios: any[], janelaColeta: string): string {
     const total_vendas = envios.length;
     const total_volumes = envios.reduce((sum, envio) => sum + (envio.volumes || 0), 0);
     const total_valor = envios.reduce((sum, envio) => sum + (envio.valor_venda || 0), 0);
-
     const tableRows = envios.map(envio => `
     <tr>
         <td>${envio.codigo_venda || ''}</td>
@@ -16,7 +14,6 @@ function gerarHtmlRomaneio(envios: any[], janelaColeta: string, startDate: strin
         <td>${envio.volumes || 0}</td>
     </tr>
     `).join('');
-
     return `
     <!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8"><title>Romaneio - ${janelaColeta}</title>
     <style>body{font-family:sans-serif;margin:20px;color:#333}.page-container{max-width:800px;margin:auto}.company-header{display:flex;align-items:center;border-bottom:2px solid #333;padding-bottom:15px;margin-bottom:20px}.company-header img{width:100px;margin-right:20px}.company-header .info{font-size:.9em}h1{text-align:center}.collection-info{display:flex;justify-content:space-between;align-items:center;background-color:#f2f2f2;padding:15px;border-radius:5px;margin-bottom:20px}.collection-info .carrier-logo img{max-height:40px;max-width:150px}table{width:100%;border-collapse:collapse;font-size:.9em}th,td{padding:8px;text-align:left;border:1px solid #ccc}th{background-color:#f2f2f2}.summary{margin-top:30px;padding-top:15px;border-top:1px solid #ccc}.footer{margin-top:50px}.footer p{margin-top:30px;text-align:center}.footer .signature-line{border-bottom:1px solid #333;width:350px;margin:0 auto}.no-print{margin-top:30px;text-align:center}.print-button{background-color:#28a745;color:#fff;padding:10px 20px;border:none;border-radius:5px;cursor:pointer;font-size:1rem}@media print{body{margin:0}.no-print{display:none}}</style>
@@ -33,16 +30,16 @@ function gerarHtmlRomaneio(envios: any[], janelaColeta: string, startDate: strin
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') { return new Response('ok', { headers: corsHeaders }) }
   try {
-    // --- MUDANÇA AQUI: Recebendo também as datas ---
     const { janela_coleta, start_date, end_date } = await req.json();
     if (!janela_coleta || !start_date || !end_date) {
         throw new Error("Parâmetros 'janela_coleta', 'start_date' e 'end_date' são obrigatórios.");
     }
 
-    const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    // --- MUDANÇA PRINCIPAL AQUI ---
+    // Usando o cliente com a 'service_role_key' para a consulta
+    const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 
-    // --- MUDANÇA AQUI: Adicionando os filtros de data à consulta ---
-    const { data: envios, error } = await supabase
+    const { data: envios, error } = await supabaseAdmin
         .from('envios')
         .select('*')
         .eq('janela_coleta', janela_coleta)
@@ -52,7 +49,7 @@ Deno.serve(async (req) => {
 
     if (error) throw error;
 
-    const htmlCompleto = gerarHtmlRomaneio(envios || [], janela_coleta, start_date, end_date);
+    const htmlCompleto = gerarHtmlRomaneio(envios || [], janela_coleta);
 
     return new Response(htmlCompleto, { headers: { ...corsHeaders, 'Content-Type': 'text/html' }, status: 200 });
   } catch (error) {
