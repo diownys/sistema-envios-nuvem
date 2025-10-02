@@ -1,45 +1,52 @@
-// Arquivo: supabase/functions/get-vendas-por-janela/index.ts
-
+// Arquivo: supabase/functions/get-vendas-por-janela/index.ts (VERSÃO FINAL COM FILTRO DE DATA E JANELA)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
-  try {
-    const { janela } = await req.json() // Recebe o nome da janela do frontend
-
-    if (!janela) {
-      throw new Error('O parâmetro "janela" é obrigatório.')
+    // Lógica para lidar com requisições OPTIONS (CORS)
+    if (req.method === 'OPTIONS') { 
+        return new Response('ok', { headers: corsHeaders }) 
     }
+    
+    try {
+        // 1. RECEBIMENTO E VALIDAÇÃO DOS 3 PARÂMETROS
+        const { janela, start_date, end_date } = await req.json(); 
+        
+        if (!janela || !start_date || !end_date) {
+            throw new Error("Parâmetros 'janela', 'start_date' e 'end_date' são obrigatórios.");
+        }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+        // 2. INICIALIZAÇÃO DO CLIENTE SUPABASE
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '', 
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        );
 
-    // Busca no banco filtrando pela janela de coleta
-    const { data, error } = await supabaseAdmin
-      .from('envios')
-      .select('*') // Pega todos os dados da venda
-      .eq('janela_coleta', janela) // O filtro mágico acontece aqui!
-      .order('created_at', { ascending: false })
+        // 3. BUSCA COM OS FILTROS DE JANELA E DATA
+        const { data, error } = await supabaseAdmin
+            .from('envios')
+            .select('*') // Mantido o .select('*') do primeiro código
+            .eq('janela_coleta', janela) // Filtro essencial da janela (mantido)
+            .gte('created_at', start_date) // Filtro de data de início (novo)
+            .lt('created_at', end_date)     // Filtro de data de fim (novo)
+            .order('created_at', { ascending: false }); // Ordenação (mantida)
 
-    if (error) {
-      throw error
+        if (error) {
+            throw error
+        }
+
+        // 4. RETORNO DA RESPOSTA
+        return new Response(JSON.stringify({ vendas: data }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 200,
+        });
+
+    } catch (error) {
+        // Tratamento de Erros (mantido do primeiro código)
+        console.error('Erro na função get-vendas-por-janela:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 400,
+        });
     }
-
-    return new Response(JSON.stringify({ vendas: data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
-  } catch (error) {
-    console.error('Erro na função get-vendas-por-janela:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    })
-  }
-})
+});

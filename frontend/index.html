@@ -27,7 +27,7 @@
         .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
         
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-        /* Estilo do Card Aprimorado do segundo código */
+        /* Estilo do Card Aprimorado */
         .menu-card { 
             background: white; 
             padding: 1.5rem; 
@@ -94,9 +94,10 @@
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     const dateInput = document.getElementById('date-filter-input');
-    const container = document.getElementById('envios-container'); // ID do container do primeiro código
+    // ID do container padronizado para 'envios-container' conforme o primeiro código
+    const container = document.getElementById('envios-container'); 
 
-    // Função para definir a data padrão no input e carregar os dados
+    // Função para definir a data padrão no input e carregar os dados (mantida)
     function setDateAndFetch(date) {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -107,7 +108,7 @@
     }
     
     document.addEventListener('DOMContentLoaded', async () => {
-        // Lógica de Autenticação e Admin (mantida)
+        // Lógica de Autenticação, Admin e Logout (mantida)
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             window.location.href = '/login.html';
@@ -138,7 +139,7 @@
         });
     });
 
-    // Função de carregamento que usa a nova API e renderiza os cards com estatísticas
+    // Função de carregamento com o link atualizado (Unificado do segundo código)
     async function carregarMenuDeColeta(date) {
         container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
@@ -159,10 +160,13 @@
             
             container.innerHTML = '';
             
+            // Pega a data formatada do input para usar na URL
+            const dateString = dateInput.value; 
+
             if (!data.janelas || data.janelas.length === 0) {
                 container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada para esta data.</p></div>';
             } else {
-                // Lógica de Renderização com Estatísticas do segundo código
+                // Lógica de Renderização com Estatísticas
                 data.janelas.forEach(janela => {
                     const total = parseInt(janela.total_envios || 0);
                     const confirmados = parseInt(janela.envios_confirmados || 0);
@@ -170,7 +174,7 @@
                     const porcentagem = total > 0 ? (confirmados / total) * 100 : 0;
 
                     container.innerHTML += `
-                        <a href="vendas.html?janela=${encodeURIComponent(janela.janela_coleta)}" class="menu-card">
+                        <a href="vendas.html?janela=${encodeURIComponent(janela.janela_coleta)}&data=${dateString}" class="menu-card">
                             <div class="card-title">${janela.janela_coleta}</div>
                             <div class="card-stats">
                                 <span>${pendentes} Pendentes / ${total} Total</span>
