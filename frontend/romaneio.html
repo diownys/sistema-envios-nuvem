@@ -1,91 +1,136 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerar Romaneio de Coleta</title>
-    <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f9; margin: 0; }
-        .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; }
-        h1 { color: #333; }
-        select, button { width: 100%; padding: 0.8rem; margin-top: 1rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        a { display: block; margin-top: 1rem; color: #6c757d; }
-    </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Gerar Romaneio</title>
+
+  <!-- Credenciais públicas -->
+  <meta name="supabase-url"  content="SUA_SUPABASE_URL">
+  <meta name="supabase-anon" content="SUA_SUPABASE_ANON_KEY">
+
+  <style>
+    body { font-family: sans-serif; margin: 24px; background:#f7f7fb; }
+    .card { background:#fff; border:1px solid #e9e9ef; border-radius:8px; padding:16px; max-width:720px; }
+    .row { display:flex; gap:12px; align-items:center; margin:12px 0; flex-wrap:wrap; }
+    label { min-width:110px; color:#333; }
+    input, select, button { padding:8px 10px; border:1px solid #d0d0da; border-radius:6px; }
+    button { background:#007bff; color:#fff; cursor:pointer; }
+    button:disabled { background:#c7c7d3; cursor:not-allowed; }
+    #log { white-space:pre-wrap; background:#fafafa; border:1px dashed #ddd; padding:10px; border-radius:6px; margin-top:10px; }
+    a { color:#6c757d; text-decoration:none; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Gerar Romaneio de Coleta</h1>
-        <form id="romaneio-form">
-            <select id="janela-select" name="janela_coleta" required>
-                <option value="">Carregando janelas...</option>
-            </select>
-            <button type="submit">Gerar Documento</button>
-        </form>
-        <a href="/index.html">Voltar ao Dashboard</a>
+  <h1>Gerar Romaneio de Coleta</h1>
+  <div class="card">
+    <div class="row">
+      <label for="start">Início</label>
+      <input id="start" type="date"/>
+      <label for="end">Fim</label>
+      <input id="end" type="date"/>
+      <button id="btnCarregar">Carregar janelas</button>
     </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+    <div class="row">
+      <label for="janelas">Janelas</label>
+      <select id="janelas" style="min-width:280px">
+        <option>-- carregue o período --</option>
+      </select>
+      <button id="btnGerar" disabled>Gerar Documento</button>
+    </div>
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <div id="log">Aguardando…</div>
 
-    const selectElement = document.getElementById('janela-select');
-    const formElement = document.getElementById('romaneio-form');
+    <div class="row">
+      <a href="/index.htm">Voltar ao Dashboard</a>
+    </div>
+  </div>
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Proteção de página
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = '/login.html'; return; }
-        
-        // Popula o menu dropdown com as janelas disponíveis
-        try {
-            const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio');
-            if (error) throw error;
-            
-            selectElement.innerHTML = '<option value="">Selecione a Janela de Coleta</option>';
-            if (data.janelas && data.janelas.length > 0) {
-                data.janelas.forEach(janela => {
-                    selectElement.innerHTML += `<option value="${janela}">${janela}</option>`;
-                });
-            }
-        } catch (error) {
-            selectElement.innerHTML = '<option value="">Erro ao carregar janelas</option>';
-            console.error('Erro:', error);
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    const SUPABASE_URL  = document.querySelector('meta[name="https://nfsuisftzddegihyhoha.supabase.co"]').content
+    const SUPABASE_ANON = document.querySelector('meta[name="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI"]').content
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
+
+    // Domínio das Functions
+    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
+    const FN_URL = `https://${projectRef}.functions.supabase.co/get-janelas-para-romaneio`
+
+    const start = document.getElementById('start')
+    const end   = document.getElementById('end')
+    const btnCarregar = document.getElementById('btnCarregar')
+    const selJanelas  = document.getElementById('janelas')
+    const btnGerar    = document.getElementById('btnGerar')
+    const log = (m) => document.getElementById('log').textContent = m
+
+    // defaults: hoje
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth()+1).padStart(2,'0')
+    const d = String(today.getDate()).padStart(2,'0')
+    start.value = `${y}-${m}-${d}`
+    end.value   = `${y}-${m}-${d}`
+
+    btnCarregar.addEventListener('click', async () => {
+      try {
+        btnCarregar.disabled = true
+        btnGerar.disabled = true
+        selJanelas.innerHTML = '<option>Carregando…</option>'
+        log('Consultando janelas confirmadas…')
+
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          log('Sessão expirada. Faça login novamente.')
+          location.href = '/login.html'
+          return
         }
-    });
 
-    formElement.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const selectedJanela = selectElement.value;
-        if (!selectedJanela) {
-            alert('Por favor, selecione uma janela de coleta.');
-            return;
+        const qs = new URLSearchParams({
+          start_date: start.value,
+          end_date:   end.value
+        }).toString()
+
+        const resp = await fetch(`${FN_URL}?${qs}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+        const payload = await resp.json()
+        if (!resp.ok) throw new Error(payload?.error || 'Falha ao buscar janelas.')
+
+        const { janelas, range } = payload
+        log(`Período: ${range.startISO} → ${range.endISO}\nEncontradas ${janelas.length} janelas.`)
+
+        selJanelas.innerHTML = ''
+        if (janelas.length === 0) {
+          selJanelas.innerHTML = '<option>Sem janelas para o período.</option>'
+          btnGerar.disabled = true
+          return
         }
-
-        const submitButton = event.target.querySelector('button');
-        submitButton.textContent = 'Gerando...';
-
-        try {
-            const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
-                body: { janela_coleta: selectedJanela },
-                responseType: 'text'
-            });
-
-            if (error) throw error;
-
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(htmlString);
-            printWindow.document.close();
-            printWindow.print();
-        } catch (error) {
-            alert(`Erro ao gerar romaneio: ${error.message}`);
-        } finally {
-            submitButton.textContent = 'Gerar Documento';
+        for (const j of janelas) {
+          const opt = document.createElement('option')
+          opt.value = j
+          opt.textContent = j
+          selJanelas.appendChild(opt)
         }
-    });
-</script>
+        btnGerar.disabled = false
+      } catch (e) {
+        log('Erro: ' + (e?.message ?? e))
+        selJanelas.innerHTML = '<option>Erro ao carregar.</option>'
+      } finally {
+        btnCarregar.disabled = false
+      }
+    })
+
+    btnGerar.addEventListener('click', () => {
+      const janela = selJanelas.value
+      if (!janela || janela.startsWith('Sem ') || janela.startsWith('--')) {
+        log('Selecione uma janela válida.')
+        return
+      }
+      // TODO: integrar a geração de romaneio desta janela
+      log(`Romaneio para: ${janela} (implementar geração do documento)`) 
+    })
+  </script>
 </body>
 </html>
