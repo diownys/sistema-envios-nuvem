@@ -35,7 +35,7 @@
     <div class="row">
       <div id="log">Selecione um arquivo .xlsx ou .csv para importar.</div>
     </div>
-    /index.htmlVoltar ao Dashboard</a>
+    <a href="/index.htm">Voltar ao Dashboard</a>
   </div>
 
   <script type="module">
@@ -45,7 +45,6 @@
     const SUPABASE_ANON = document.querySelector('meta[name="supabase-anon"]').content
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
-    // Monta o domínio correto das Edge Functions: <ref>.functions.supabase.co
     const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
     const FUNCTIONS_URL = `https://${projectRef}.functions.supabase.co/import-excel`
 
@@ -59,7 +58,6 @@
         const file = fileInput.files?.[0]
         if (!file) return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error')
 
-        // Garante usuário logado (a função usa o token para obter user_id)
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
           log('Sessão expirada. Redirecionando para o login...', 'error')
@@ -70,7 +68,6 @@
         btn.disabled = true
         log('Enviando e processando o arquivo, aguarde…')
 
-        // Envio em multipart/form-data (NÃO definir Content-Type manualmente!)
         const form = new FormData()
         form.append('file', file, file.name)
 
@@ -80,7 +77,6 @@
           body: form
         })
 
-        // Tenta extrair mensagem detalhada mesmo em 400
         let text = await resp.text()
         let payload
         try { payload = JSON.parse(text) } catch { payload = { error: text } }
