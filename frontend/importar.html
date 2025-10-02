@@ -1,10 +1,14 @@
-<!-- importar.html -->
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Importar Envios</title>
+
+  <!-- >>>>>>> TROQUE AQUI PELOS VALORES DO SEU PROJETO <<<<<<< -->
+  <meta name="supabase-url"  content="https://nfsuisftzddegihyhoha.supabase.co">
+  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
+  <!-- ^ a anon key é pública (cliente). Não use SERVICE_ROLE aqui. -->
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 640px; }
@@ -21,7 +25,7 @@
     </div>
     <div class="row">
       <button id="btnEnviar">Enviar</button>
-      <index.htmlVoltar ao Dashboard</a>
+      /index.htmlVoltar ao Dashboard</a>
     </div>
     <div class="row"><div id="log"></div></div>
   </div>
@@ -29,21 +33,27 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-    // TODO: substitua pelas suas variáveis reais (públicas)
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+    // Lê as credenciais das metatags
+    const SUPABASE_URL  = document.querySelector('meta[name="supabase-url"]').content
+    const SUPABASE_ANON = document.querySelector('meta[name="supabase-anon"]').content
 
+    // Cria cliente
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
+    // Descobre automaticamente o domínio das Functions: *.functions.supabase.co
+    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0] // abc123
+    const FUNCTIONS_URL = `https://${projectRef}.functions.supabase.co/import-excel`
+
+    const btn = document.getElementById('btnEnviar')
+    const fileInput = document.getElementById('file')
     const log = (msg) => document.getElementById('log').textContent = msg
 
-    document.getElementById('btnEnviar').addEventListener('click', async () => {
+    btn.addEventListener('click', async () => {
       try {
-        const fileInput = document.getElementById('file')
         const file = fileInput.files?.[0]
         if (!file) return log('Selecione um arquivo .xlsx ou .csv')
 
-        // exige usuário autenticado (a função valida o user do token)
+        // Garante usuário logado (a função valida o token)
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) {
           log('Sessão expirada. Faça login novamente.')
@@ -51,23 +61,26 @@
           return
         }
 
-        log('Enviando arquivo… aguarde.')
+        btn.disabled = true
+        log('Enviando arquivo…')
+
         const form = new FormData()
         form.append('file', file, file.name)
 
-        const resp = await fetch('/functions/v1/import-excel', {
+        // Chama a Edge Function diretamente no domínio de functions
+        const resp = await fetch(FUNCTIONS_URL, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${session.access_token}` },
           body: form
         })
-
         const json = await resp.json()
         if (!resp.ok) throw new Error(json?.error || 'Falha ao importar.')
         log(json.message || 'Importação concluída!')
       } catch (err) {
         log('Erro: ' + (err?.message ?? err))
+      } finally {
+        btn.disabled = false
       }
     })
   </script>
 </body>
-</html>
