@@ -10,7 +10,8 @@
 
   <style>
     body { font-family: sans-serif; margin: 24px; background:#f7f7fb; }
-    .card { background:#fff; border:1px solid #e9e9ef; border-radius:8px; padding:16px; max-width:720px; }
+    .card { background:#fff; border:1px solid #e9e9ef; border-radius:8px; padding:16px; max-width:720px; margin: auto; }
+    h1 { text-align: center; }
     .row { display:flex; gap:12px; align-items:center; margin:12px 0; flex-wrap:wrap; }
     label { min-width:110px; color:#333; }
     input, select, button { padding:8px 10px; border:1px solid #d0d0da; border-radius:6px; font-size: 1rem; }
@@ -21,8 +22,8 @@
   </style>
 </head>
 <body>
-  <h1>Gerar Romaneio de Coleta</h1>
   <div class="card">
+    <h1>Gerar Romaneio de Coleta</h1>
     <div class="row">
       <label for="start">Início</label>
       <input id="start" type="date"/>
@@ -58,8 +59,8 @@
     const SUPABASE_ANON = getMeta('supabase-anon');
 
     if (!SUPABASE_URL || !SUPABASE_ANON) {
-        log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
-        throw new Error('Metas de configuração ausentes.');
+      log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
+      throw new Error('Metas de configuração ausentes.');
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -69,74 +70,74 @@
     const selJanelas  = document.getElementById('janelas');
     const btnGerar    = document.getElementById('btnGerar');
 
-    // Define as datas padrão para hoje
     const today = new Date().toISOString().split('T')[0];
     startInput.value = today;
     endInput.value   = today;
 
     // --- LÓGICA DE EVENTOS ---
     btnCarregar.addEventListener('click', async () => {
-        try {
-            btnCarregar.disabled = true;
-            btnGerar.disabled = true;
-            selJanelas.innerHTML = '<option>Carregando…</option>';
-            log('Consultando janelas confirmadas…');
+      try {
+        btnCarregar.disabled = true;
+        btnGerar.disabled = true;
+        selJanelas.innerHTML = '<option>Carregando…</option>';
+        log('Consultando janelas confirmadas…');
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) {
-                log('Sessão expirada. Faça login novamente.');
-                location.href = '/login.html';
-                return;
-            }
-
-            const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
-                body: { 
-                    start_date: startInput.value, 
-                    end_date: endInput.value 
-                }
-            });
-
-            if (error) throw error;
-
-            const { janelas = [] } = data;
-            log(`Encontradas ${janelas.length} janelas para o período selecionado.`);
-
-            selJanelas.innerHTML = '';
-            if (janelas.length === 0) {
-                selJanelas.innerHTML = '<option>Nenhuma janela encontrada.</option>';
-                btnGerar.disabled = true;
-                return;
-            }
-            janelas.forEach(j => {
-                selJanelas.innerHTML += `<option value="${j}">${j}</option>`;
-            });
-            btnGerar.disabled = false;
-        } catch (e) {
-            log('Erro: ' + (e?.message ?? e));
-            selJanelas.innerHTML = '<option>Erro ao carregar.</option>';
-        } finally {
-            btnCarregar.disabled = false;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          log('Sessão expirada. Faça login novamente.');
+          location.href = '/login.html';
+          return;
         }
+        
+        // --- LÓGICA DE DATA CORRIGIDA E UNIFICADA ---
+        const startOfDay = new Date(startInput.value + 'T00:00:00');
+        const endOfDay = new Date(endInput.value + 'T00:00:00');
+        endOfDay.setDate(endOfDay.getDate() + 1); // Pega o início do dia seguinte
+
+        const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
+            body: { 
+                start_date: startOfDay.toISOString(), 
+                end_date: endOfDay.toISOString() 
+            }
+        });
+        
+        if (error) throw error;
+
+        const { janelas = [] } = data;
+        log(`Encontradas ${janelas.length} janelas para o período selecionado.`);
+
+        selJanelas.innerHTML = '';
+        if (janelas.length === 0) {
+          selJanelas.innerHTML = '<option>Nenhuma janela encontrada.</option>';
+          btnGerar.disabled = true;
+          return;
+        }
+        janelas.forEach(j => {
+          selJanelas.innerHTML += `<option value="${j}">${j}</option>`;
+        });
+        btnGerar.disabled = false;
+      } catch (e) {
+        log('Erro: ' + (e?.message ?? e));
+        selJanelas.innerHTML = '<option>Erro ao carregar.</option>';
+      } finally {
+        btnCarregar.disabled = false;
+      }
     });
 
     btnGerar.addEventListener('click', async () => {
         const janela = selJanelas.value;
-        if (!janela || !selJanelas.options[selJanelas.selectedIndex]?.value || selJanelas.options[selJanelas.selectedIndex].value.startsWith('Nenhuma')) {
+        if (!janela || selJanelas.options[selJanelas.selectedIndex]?.value.startsWith('Nenhuma')) {
             log('Selecione uma janela válida.');
             return;
         }
-        
         try {
             btnGerar.disabled = true;
             log(`Gerando romaneio para: ${janela}...`);
 
-            const startDateValue = startInput.value;
-            const endDateValue = endInput.value;
-
-            // Lógica de data corrigida
-            const startOfDay = new Date(`${startDateValue}T00:00:00`);
-            const endOfDay = new Date(`${endDateValue}T00:00:00`);
-            endOfDay.setDate(endOfDay.getDate() + 1);
+            // --- LÓGICA DE DATA CORRIGIDA E UNIFICADA ---
+            const startOfDay = new Date(startInput.value + 'T00:00:00');
+            const endOfDay = new Date(endInput.value + 'T00:00:00');
+            endOfDay.setDate(endOfDay.getDate() + 1); // Pega o início do dia seguinte
 
             const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
                 body: { 
