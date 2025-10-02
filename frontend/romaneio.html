@@ -58,8 +58,8 @@
     const SUPABASE_ANON = getMeta('supabase-anon');
 
     if (!SUPABASE_URL || !SUPABASE_ANON) {
-      log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
-      throw new Error('Metas de configuração ausentes.');
+        log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
+        throw new Error('Metas de configuração ausentes.');
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
@@ -76,92 +76,91 @@
 
     // --- LÓGICA DE EVENTOS ---
     btnCarregar.addEventListener('click', async () => {
-      try {
-        btnCarregar.disabled = true;
-        btnGerar.disabled = true;
-        selJanelas.innerHTML = '<option>Carregando…</option>';
-        log('Consultando janelas confirmadas…');
+        try {
+            btnCarregar.disabled = true;
+            btnGerar.disabled = true;
+            selJanelas.innerHTML = '<option>Carregando…</option>';
+            log('Consultando janelas confirmadas…');
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          log('Sessão expirada. Faça login novamente.');
-          location.href = '/login.html';
-          return;
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                log('Sessão expirada. Faça login novamente.');
+                location.href = '/login.html';
+                return;
+            }
+
+            const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
+                body: { 
+                    start_date: startInput.value, 
+                    end_date: endInput.value 
+                }
+            });
+
+            if (error) throw error;
+
+            const { janelas = [] } = data;
+            log(`Encontradas ${janelas.length} janelas para o período selecionado.`);
+
+            selJanelas.innerHTML = '';
+            if (janelas.length === 0) {
+                selJanelas.innerHTML = '<option>Nenhuma janela encontrada.</option>';
+                btnGerar.disabled = true;
+                return;
+            }
+            janelas.forEach(j => {
+                selJanelas.innerHTML += `<option value="${j}">${j}</option>`;
+            });
+            btnGerar.disabled = false;
+        } catch (e) {
+            log('Erro: ' + (e?.message ?? e));
+            selJanelas.innerHTML = '<option>Erro ao carregar.</option>';
+        } finally {
+            btnCarregar.disabled = false;
         }
-
-        // Chama a sua nova e melhorada função
-        const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
-            body: { start_date: startInput.value, end_date: endInput.value }
-        });
-
-        if (error) throw error;
-
-        const { janelas = [] } = data;
-        log(`Encontradas ${janelas.length} janelas para o período selecionado.`);
-
-        selJanelas.innerHTML = '';
-        if (janelas.length === 0) {
-          selJanelas.innerHTML = '<option>Nenhuma janela encontrada.</option>';
-          btnGerar.disabled = true;
-          return;
-        }
-        janelas.forEach(j => {
-          selJanelas.innerHTML += `<option value="${j}">${j}</option>`;
-        });
-        btnGerar.disabled = false;
-      } catch (e) {
-        log('Erro: ' + (e?.message ?? e));
-        selJanelas.innerHTML = '<option>Erro ao carregar.</option>';
-      } finally {
-        btnCarregar.disabled = false;
-      }
     });
 
-    // --- LÓGICA DO BOTÃO "GERAR" COMPLETADA ---
-btnGerar.addEventListener('click', async () => {
-    const janela = selJanelas.value;
-    if (!janela || selJanelas.options.length === 0 || !selJanelas.options[selJanelas.selectedIndex]?.value) {
-        log('Selecione uma janela válida.');
-        return;
-    }
-    
-    try {
-        btnGerar.disabled = true;
-        log(`Gerando romaneio para: ${janela}...`);
+    btnGerar.addEventListener('click', async () => {
+        const janela = selJanelas.value;
+        if (!janela || !selJanelas.options[selJanelas.selectedIndex]?.value || selJanelas.options[selJanelas.selectedIndex].value.startsWith('Nenhuma')) {
+            log('Selecione uma janela válida.');
+            return;
+        }
+        
+        try {
+            btnGerar.disabled = true;
+            log(`Gerando romaneio para: ${janela}...`);
 
-        // --- CORREÇÃO AQUI: Lendo as datas dos inputs ---
-        const startDateValue = start.value; // 'start' é o input da data de início
-        const endDateValue = end.value;   // 'end' é o input da data de fim
+            const startDateValue = startInput.value;
+            const endDateValue = endInput.value;
 
-        // Converte as datas para o formato ISO, garantindo que o dia inteiro seja coberto
-        const startOfDay = new Date(startDateValue + 'T00:00:00');
-        const endOfDay = new Date(endDateValue + 'T23:59:59');
-        // --- FIM DA CORREÇÃO ---
+            // Lógica de data corrigida
+            const startOfDay = new Date(`${startDateValue}T00:00:00`);
+            const endOfDay = new Date(`${endDateValue}T00:00:00`);
+            endOfDay.setDate(endOfDay.getDate() + 1);
 
-        // Chama a função que gera o HTML, agora com todos os parâmetros corretos
-        const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
-            body: { 
-                janela_coleta: janela,
-                start_date: startOfDay.toISOString(),
-                end_date: endOfDay.toISOString()
-            },
-            responseType: 'text'
-        });
+            const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
+                body: { 
+                    janela_coleta: janela,
+                    start_date: startOfDay.toISOString(),
+                    end_date: endOfDay.toISOString()
+                },
+                responseType: 'text'
+            });
 
-        if (error) throw error;
+            if (error) throw error;
 
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(htmlString);
-        printWindow.document.close();
-        printWindow.print();
-        log(`Romaneio para "${janela}" gerado com sucesso.`);
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlString);
+            printWindow.document.close();
+            printWindow.print();
+            log(`Romaneio para "${janela}" gerado com sucesso.`);
 
-    } catch (e) {
-        log('Erro ao gerar documento: ' + (e?.message ?? e));
-    } finally {
-        btnGerar.disabled = false;
-    }
-});
+        } catch (e) {
+            log('Erro ao gerar documento: ' + (e?.message ?? e));
+        } finally {
+            btnGerar.disabled = false;
+        }
+    });
 
     // Carrega as janelas do dia atual ao iniciar a página
     btnCarregar.click();
