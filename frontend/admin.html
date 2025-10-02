@@ -25,6 +25,24 @@
     .message { min-height: 1.2em; margin-top: 1rem; font-weight: bold; }
     .success { color: #28a745; }
     .error { color: #dc3545; }
+    /* Adicione no final da sua tag <style> */
+.danger-zone {
+    border: 2px solid #dc3545;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    background-color: #f8d7da;
+}
+.danger-zone h2 {
+    color: #721c24;
+    margin-top: 0;
+}
+.danger-zone button {
+    background-color: #dc3545;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
   </style>
 </head>
 <body>
@@ -49,7 +67,12 @@
         <tbody id="logs-table-body"></tbody>
       </table>
     </div>
-
+    <div class="danger-zone">
+    <h2>Zona de Perigo</h2>
+    <p>A ação abaixo é irreversível e irá apagar permanentemente todas as vendas do sistema.</p>
+    <button id="delete-all-button">Excluir Todas as Vendas</button>
+    <div id="delete-message" class="message" style="margin-top: 1rem;"></div>
+    </div>
     <h2>Criar Novo Usuário</h2>
     <div class="form-container">
       <form id="create-user-form">
@@ -91,6 +114,43 @@
       }
       
       setupEventListeners();
+    const deleteButton = document.getElementById('delete-all-button');
+    const deleteMessageDiv = document.getElementById('delete-message');
+
+    deleteButton.addEventListener('click', async () => {
+        const confirm1 = prompt("Esta ação é IRREVERSÍVEL e apagará TODAS as vendas. Para confirmar, digite 'excluir tudo':");
+        if (confirm1 !== 'excluir tudo') {
+            log('Exclusão cancelada.', 'error', deleteMessageDiv);
+            return;
+        }
+
+        const confirm2 = prompt("Confirmação final. Tem ABSOLUTA CERTEZA? Digite 'sim, eu tenho certeza':");
+        if (confirm2 !== 'sim, eu tenho certeza') {
+            log('Exclusão cancelada.', 'error', deleteMessageDiv);
+            return;
+        }
+
+        deleteButton.disabled = true;
+        log('Excluindo todos os dados, aguarde...', '', deleteMessageDiv);
+
+        try {
+            const { data, error } = await supabase.functions.invoke('delete-all-envios');
+            if (error) throw error;
+            log(data.message, 'success', deleteMessageDiv);
+            // Recarrega a página de logs para mostrar que está vazia
+            setTimeout(() => carregarLogs(1, ''), 2000);
+        } catch (err) {
+            log('Erro: ' + (err?.message ?? err), 'error', deleteMessageDiv);
+        } finally {
+            deleteButton.disabled = false;
+        }
+    });
+
+    // Função auxiliar para logs, para reutilizar
+    function log(msg, type = '', element) {
+        element.textContent = msg;
+        element.className = `message ${type}`;
+    }
       carregarLogs(currentPage, currentSearchTerm);
     });
     
