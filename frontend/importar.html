@@ -5,19 +5,74 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Importar Envios</title>
   
-  <meta name="supabase-url" content="SUA_SUPABASE_URL">
-  <meta name="supabase-anon" content="SUA_SUPABASE_ANON_KEY">
+  <!-- Substitua pelos valores reais do seu projeto -->
+  <meta name="supabase-url" content="https://nfsuisftzddegihyhoha.supabase.co">
+  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
   
   <style>
-    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f9; margin: 0; }
-    .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; }
-    h1 { color: #333; margin-bottom: 1.5rem; }
-    input[type="file"] { border: 1px solid #ddd; padding: 0.8rem; border-radius: 5px; width: 100%; box-sizing: border-box; }
-    button { background-color: #007bff; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 5px; cursor: pointer; font-size: 1rem; margin-top: 1.5rem; width: 100%; transition: background-color 0.2s; }
-    button:disabled { background-color: #ccc; cursor: not-allowed; }
-    button:hover:not(:disabled) { background-color: #0056b3; }
-    a { display: block; margin-top: 1rem; color: #6c757d; text-decoration: none; }
-    #log { margin-top: 1.5rem; white-space: pre-wrap; background: #f7f7f7; padding: 12px; border-radius: 6px; min-height: 1.5em; text-align: left; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f9;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 2rem 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 90%;
+      max-width: 500px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 1.5rem;
+    }
+    input[type="file"] {
+      border: 1px solid #ddd;
+      padding: 0.8rem;
+      border-radius: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      margin-top: 1.5rem;
+      width: 100%;
+      transition: background-color 0.2s;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+    a {
+      display: block;
+      margin-top: 1rem;
+      color: #6c757d;
+      text-decoration: none;
+    }
+    #log {
+      margin-top: 1.5rem;
+      white-space: pre-wrap;
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 6px;
+      min-height: 1.5em;
+      text-align: left;
+    }
     .success { color: #155724; }
     .error { color: #721c24; }
   </style>
@@ -68,7 +123,7 @@
         btn.disabled = true;
         log('Enviando e processando o arquivo, aguarde...');
 
-        // Usando o supabase.functions.invoke para consistência
+        // Usando supabase.functions.invoke para enviar o arquivo
         const { data, error } = await supabase.functions.invoke('import-excel', {
             headers: { 'Content-Type': file.type },
             body: file
