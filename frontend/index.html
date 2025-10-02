@@ -10,49 +10,55 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
+            margin-bottom: 2rem; 
+            flex-wrap: wrap; 
         }
-        /* CORREÇÃO APLICADA: Removido width: 100% para que o filtro de data apareça ao lado do título em telas maiores */
-        .header h1 { color: #333; margin-bottom: 0; } 
-        
+        /* Ajuste para garantir que o título e o filtro de data fiquem lado a lado */
+        .header h1 { color: #333; margin-bottom: 0; }
         .header-controls { 
             display: flex; 
             gap: 1rem; 
             align-items: center; 
             flex-wrap: wrap; 
-            margin-bottom: 1rem; /* Espaçamento para telas pequenas */
+            margin-bottom: 1rem;
         }
         #date-filter-input { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        
         .header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
         
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        /* Estilo do Card Aprimorado do segundo código */
         .menu-card { 
             background: white; 
-            padding: 1rem; 
+            padding: 1.5rem; 
             border-radius: 8px; 
             box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
             text-decoration: none; 
             color: #333; 
             transition: transform 0.2s, box-shadow 0.2s; 
             display: flex; 
-            flex-direction: column;
-            justify-content: center; 
-            align-items: center; 
-            min-height: 80px;
-            text-align: center;
+            flex-direction: column; 
+            justify-content: space-between; /* Melhor alinhamento vertical */
+            min-height: 120px; 
         }
         .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .card-info { font-size: 0.9rem; color: #666; }
+        .card-title { font-size: 1.2rem; font-weight: bold; text-align: center; margin-bottom: 1rem; }
+        .card-stats { text-align: center; font-size: 0.9rem; color: #555; }
+        .progress-bar { background-color: #e9ecef; border-radius: 5px; height: 10px; margin-top: 0.75rem; overflow: hidden; }
+        .progress-bar-inner { background-color: #28a745; height: 100%; transition: width 0.5s ease-in-out; }
+        
         .no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; grid-column: 1 / -1; }
-        .menu-card-special { background-color: #ffc107; }
+        /* Estilo do Card Especial */
+        .menu-card-special { 
+            background-color: #ffc107; 
+            justify-content: center; 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            text-align: center;
+        }
 
         @media (min-width: 768px) {
             body { padding: 2rem; }
-            .header h1 { width: auto; }
             .header-controls { margin-bottom: 0; }
             .grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
             .btn-import { font-size: 1rem; }
@@ -67,7 +73,7 @@
         </div>
         <div class="header-buttons">
             <a href="envio-form.html" class="btn-import" style="background-color: #007bff;">Adicionar Venda</a>
-            <a href="#" class="btn-import" style="background-color: #17a2b8;">Relatórios</a>
+            <a href="#" class="btn-import" style="background-color: #17a2b8;">Relatórios</a> 
             <a href="romaneio.html" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
             <a href="importar.html" class="btn-import">Importar Planilha</a>
             <div id="admin-button-placeholder"></div>
@@ -76,19 +82,19 @@
     </div>
 
     <div class="grid-container" id="envios-container">
-        <div class="no-data"><p>Carregando envios...</p></div>
+        <div class="no-data"><p>Carregando menus de coleta...</p></div>
     </div>
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    // Chaves Supabase do primeiro código foram mantidas
+    // CHAVES SUPABASE DO PRIMEIRO CÓDIGO MANTIDAS
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     const dateInput = document.getElementById('date-filter-input');
-    const container = document.getElementById('envios-container');
+    const container = document.getElementById('envios-container'); // ID do container do primeiro código
 
     // Função para definir a data padrão no input e carregar os dados
     function setDateAndFetch(date) {
@@ -132,7 +138,7 @@
         });
     });
 
-    // Função de carregamento que usa a nova API com filtro de data (carregarJanelasDoDia renomeada para carregarMenuDeColeta)
+    // Função de carregamento que usa a nova API e renderiza os cards com estatísticas
     async function carregarMenuDeColeta(date) {
         container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
@@ -156,9 +162,25 @@
             if (!data.janelas || data.janelas.length === 0) {
                 container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada para esta data.</p></div>';
             } else {
+                // Lógica de Renderização com Estatísticas do segundo código
                 data.janelas.forEach(janela => {
-                    // Mantido o formato de card simples do segundo código, mas com a classe card-title do primeiro
-                    container.innerHTML += `<a href="vendas.html?janela=${encodeURIComponent(janela)}" class="menu-card"><span class="card-title">${janela}</span></a>`;
+                    const total = parseInt(janela.total_envios || 0);
+                    const confirmados = parseInt(janela.envios_confirmados || 0);
+                    const pendentes = total - confirmados;
+                    const porcentagem = total > 0 ? (confirmados / total) * 100 : 0;
+
+                    container.innerHTML += `
+                        <a href="vendas.html?janela=${encodeURIComponent(janela.janela_coleta)}" class="menu-card">
+                            <div class="card-title">${janela.janela_coleta}</div>
+                            <div class="card-stats">
+                                <span>${pendentes} Pendentes / ${total} Total</span>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-inner" style="width: ${porcentagem}%;"></div>
+                                </div>
+                                <span>${porcentagem.toFixed(0)}% Concluído</span>
+                            </div>
+                        </a>
+                    `;
                 });
             }
             
