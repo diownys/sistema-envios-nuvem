@@ -137,7 +137,7 @@
             // --- LÓGICA DE DATA CORRIGIDA E UNIFICADA ---
             const startOfDay = new Date(startInput.value + 'T00:00:00');
             const endOfDay = new Date(endInput.value + 'T00:00:00');
-            endOfDay.setDate(endOfDay.getDate() + 1); // Pega o início do dia seguinte
+            endOfDay.setDate(endOfDay.getDate() + 1);
 
             const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
                 body: { 
