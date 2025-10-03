@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - KPIs</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+        .container { max-width: 1200px; margin: auto; }
+        .header a { color: #007bff; text-decoration: none; font-weight: bold; }
+        h1 { color: #333; }
+        .filters { display: flex; gap: 1rem; align-items: center; background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+        .filters label { font-weight: bold; }
+        .filters input, .filters button { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+        .filters button { background-color: #007bff; color: white; cursor: pointer; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+        .kpi-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .kpi-card h3 { margin-top: 0; color: #555; font-size: 1rem; }
+        .kpi-card .value { font-size: 2.5rem; font-weight: bold; color: #333; }
+        .kpi-card .details { font-size: 0.9rem; color: #777; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p class="header"><a href="/index.html">&larr; Voltar ao Dashboard</a></p>
+        <h1>Painel de KPIs</h1>
+
+        <div class="filters">
+            <label for="start-date">De:</label>
+            <input type="date" id="start-date">
+            <label for="end-date">Até:</label>
+            <input type="date" id="end-date">
+            <button id="generate-report">Gerar Relatório</button>
+        </div>
+
+        <div id="kpi-container" class="kpi-grid">
+            </div>
+    </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = 'SUA_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'SUA_SUPABASE_ANON_KEY';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const generateButton = document.getElementById('generate-report');
+    const kpiContainer = document.getElementById('kpi-container');
+
+    function formatCurrency(value) {
+        return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function renderKPIs(data) {
+        kpiContainer.innerHTML = ''; // Limpa os KPIs antigos
+
+        if (!data || !data.total_envios) {
+            kpiContainer.innerHTML = `<p>Nenhum dado encontrado para o período selecionado.</p>`;
+            return;
+        }
+
+        // Card de Total de Envios
+        kpiContainer.innerHTML += `
+            <div class="kpi-card">
+                <h3>Total de Envios</h3>
+                <div class="value">${data.total_envios}</div>
+                <div class="details">${formatCurrency(data.total_valor)} em vendas</div>
+            </div>
+        `;
+
+        // Card de Status
+        kpiContainer.innerHTML += `
+            <div class="kpi-card">
+                <h3>Status</h3>
+                <div class="value">${data.envios_confirmados} / ${data.total_envios}</div>
+                <div class="details">${data.envios_pendentes} pendentes</div>
+            </div>
+        `;
+        
+        // Cards por Marca
+        if (data.por_marca) {
+            data.por_marca.forEach(marca => {
+                kpiContainer.innerHTML += `
+                    <div class="kpi-card">
+                        <h3>Envios ${marca.marca}</h3>
+                        <div class="value">${marca.total_envios}</div>
+                        <div class="details">${formatCurrency(marca.total_valor)} em vendas</div>
+                    </div>
+                `;
+            });
+        }
+    }
+
+    async function fetchAndDisplayKPIs() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        if (!startDate || !endDate) {
+            alert('Por favor, selecione as datas de início e fim.');
+            return;
+        }
+
+        kpiContainer.innerHTML = '<p>Carregando relatório...</p>';
+
+        // Lógica de data para incluir o dia final inteiro
+        const startOfDay = new Date(startDate + 'T00:00:00');
+        const endOfDay = new Date(endDate + 'T00:00:00');
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        try {
+            const { data, error } = await supabase.rpc('get_kpi_stats', {
+                start_date_param: startOfDay.toISOString(),
+                end_date_param: endOfDay.toISOString()
+            });
+
+            if (error) throw error;
+            renderKPIs(data);
+
+        } catch (error) {
+            kpiContainer.innerHTML = `<p style="color: red;">Erro ao carregar relatório: ${error.message}</p>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { window.location.href = '/login.html'; return; }
+
+        // Define as datas padrão para o dia de hoje
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.value = today;
+        endDateInput.value = today;
+
+        generateButton.addEventListener('click', fetchAndDisplayKPIs);
+        
+        // Gera o relatório do dia atual ao carregar a página
+        fetchAndDisplayKPIs();
+    });
+</script>
+</body>
+</html>
