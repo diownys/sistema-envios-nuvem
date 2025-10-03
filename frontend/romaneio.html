@@ -55,6 +55,8 @@
     const log = (m) => { logDiv.textContent = m; };
 
     const getMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.content?.trim() || '';
+    
+    // --- CORREÇÃO APLICADA AQUI ---
     const SUPABASE_URL  = getMeta('supabase-url');
     const SUPABASE_ANON = getMeta('supabase-anon');
 
@@ -89,10 +91,9 @@
           return;
         }
         
-        // --- LÓGICA DE DATA CORRIGIDA E UNIFICADA ---
-        const startOfDay = new Date(startInput.value + 'T00:00:00');
-        const endOfDay = new Date(endInput.value + 'T00:00:00');
-        endOfDay.setDate(endOfDay.getDate() + 1); // Pega o início do dia seguinte
+        const startOfDay = new Date(startInput.value + 'T00:00:00Z'); // Usando Z para UTC
+        const endOfDay = new Date(endInput.value + 'T00:00:00Z');
+        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
         const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
             body: { 
@@ -134,10 +135,9 @@
             btnGerar.disabled = true;
             log(`Gerando romaneio para: ${janela}...`);
 
-            // --- LÓGICA DE DATA CORRIGIDA E UNIFICADA ---
-            const startOfDay = new Date(startInput.value + 'T00:00:00');
-            const endOfDay = new Date(endInput.value + 'T00:00:00');
-            endOfDay.setDate(endOfDay.getDate() + 1);
+            const startOfDay = new Date(startInput.value + 'T00:00:00Z');
+            const endOfDay = new Date(endInput.value + 'T00:00:00Z');
+            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
             const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
                 body: { 
