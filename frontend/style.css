@@ -1,0 +1,465 @@
+/* --- CONFIGURAÇÕES GERAIS E RESPONSIVAS --- */
+:root {
+    /* Variáveis do primeiro código (estrutura) */
+    --font-size-base: clamp(12px, 0.9vw, 16px);
+    --padding-widget: 15px;
+    --gap-geral: 20px;
+
+    /* Variáveis do segundo código (estilo e tema) */
+    --bg-color: #1E1E1E;
+    --card-bg: #2D2D2D;
+    --text-color: #E0E0E0;
+    --highlight-color: #f0c44c;
+    --secondary-text: #A0A0A0;
+    --danger-color: #d63031;
+    --info-color: #273c75;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden; /* Impede a rolagem da página inteira */
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif; /* Fonte do segundo código */
+    box-sizing: border-box;
+}
+
+body {
+    font-size: var(--font-size-base);
+    padding: var(--gap-geral);
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- GRID PRINCIPAL --- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 24% 1fr 24%; /* Coluna central flexível */
+    gap: var(--gap-geral);
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.column-left, .column-center, .column-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-geral);
+    overflow: hidden; /* A rolagem será interna aos widgets, não na coluna */
+}
+
+/* --- ESTILO GERAL DOS WIDGETS --- */
+.widget {
+    background-color: var(--card-bg); /* Usando a variável do segundo código */
+    padding: var(--padding-widget);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Essencial para o conteúdo rolável funcionar */
+}
+
+h2 {
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    font-size: 1.25rem; /* Estilo do segundo código */
+    font-weight: 600; /* Estilo do segundo código */
+    flex-shrink: 0; /* Impede o título de encolher */
+    color: var(--highlight-color); /* Cor de destaque para todos os títulos */
+}
+
+ul { list-style: none; padding: 0; margin: 0; }
+li { padding-bottom: 8px; font-size: 0.95em; }
+
+/* Classe para conteúdo com rolagem */
+.scrollable-content {
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* --- SCROLLBAR CUSTOMIZADO --- */
+.scrollable-content::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--card-bg); /* Cor de fundo do segundo código */ }
+::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #777; }
+
+/* --- COLUNA ESQUERDA --- */
+.logo-container, .clock-widget, .weather-widget { flex-shrink: 0; }
+.logo-container { text-align: center; }
+.clock-widget { text-align: center; padding: 10px 0; }
+#time { font-size: 2.5em; font-weight: 700; }
+#date { font-size: 0.9em; color: var(--secondary-text); text-transform: capitalize; }
+
+.weather-widget .weather-header { display: flex; justify-content: space-between; align-items: center; }
+.weather-widget h2 { border-bottom: none; font-size: 1.2em; }
+.weather-widget .weather-body { text-align: center; }
+.weather-widget #temperature { font-size: 2.5em; font-weight: 700; margin: 0; }
+
+.birthday-widget, .recognition-widget { flex-grow: 1; }
+.birthday-widget h2 { color: var(--highlight-color); }
+.birthday-widget li { display: flex; align-items: center; }
+.birthday-widget li::before { content: '🎂'; margin-right: 10px; }
+.birthday-widget .birthday-day { font-weight: 700; margin-right: 8px; background-color: #333; padding: 4px 8px; border-radius: 5px; text-align: center; }
+
+/* Estilos do Mural de Reconhecimentos */
+.recognition-item .header span {
+    color: var(--highlight-color);
+}
+.recognition-widget h2 { color: var(--highlight-color); }
+.recognition-item {
+    background-color: var(--bg-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-left: 4px solid var(--highlight-color);
+    font-style: italic;
+}
+.recognition-item .message { font-size: 0.9em; }
+
+/* --- COLUNA CENTRAL --- */
+.janela-stats-widget-horizontal { flex-shrink: 0; }
+#janela-stats-blocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+.janela-block {
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    text-align: center;
+    border-bottom: 4px solid var(--highlight-color);
+    min-width: 100px;
+}
+.janela-block-name { font-size: 0.8em; color: var(--secondary-text); margin-bottom: 5px; }
+.janela-block-value { font-weight: 700; color: var(--text-color); }
+
+.map-widget {
+    flex-grow: 1;           /* ainda cresce para ocupar espaço */
+    flex-shrink: 0;         /* não encolhe demais */
+    min-height: 250px;      /* altura mínima para telas pequenas */
+    max-height: 45vh;       /* altura máxima proporcional à tela */
+}
+
+#map-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+#brazil-map-svg { max-width: 100%; max-height: 100%; }
+.state-label { font-size: 10px; fill: #fff; text-anchor: middle; pointer-events: none; text-shadow: -1px 0 #000, 0 1px #000, 1px 0 #000, 0 -1px #000; }
+.legend { flex-shrink: 0; display: flex; gap: 15px; align-items: center; justify-content: center; margin-top: 10px; font-size: 0.8em; }
+.swatch { width: 18px; height: 12px; border: 1px solid #555; display: inline-block; margin-right: 5px; }
+
+/* --- COLUNA DIREITA --- */
+.progress-widget { align-items: center; flex-shrink: 0; }
+#progress-chart-container {
+    position: relative;
+    height: 200px; /* antes 130px */
+    width: 200px;  /* antes 130px */
+    margin-bottom: 10px;
+}
+
+#progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+#progress-percent { font-size: 1.8em; font-weight: bold; }
+#progress-details { font-size: 0.7em; color: var(--secondary-text); }
+
+.totals-widget { flex-direction: row; justify-content: space-around; text-align: center; background-color: #2a2a2a; flex-shrink: 0; }
+.total-label { font-size: 0.9em; color: var(--secondary-text); margin-bottom: 5px; }
+.total-value { font-size: 2em; font-weight: 700; color: var(--highlight-color); }
+
+.alert-widget { text-align: center; transition: background-color 0.5s; background-color: var(--info-color); flex-shrink: 0; }
+.alert-widget h2 { color: #fff; border: none; }
+.alert-value { font-size: 3em; font-weight: 700; color: #fff; }
+
+.occurrences-widget, .countdown-widget { flex-grow: 1; }
+.occurrences-widget li {
+    font-size: 0.9em;
+    border-bottom: 1px solid #2c2c2c;
+    padding: 10px 0;
+}
+.occurrences-widget li:last-child { border-bottom: none; }
+
+/* Estilos da Contagem Regressiva */
+.countdown-item {
+    background-color: var(--bg-color);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid transparent;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.countdown-item:hover {
+    border-color: var(--highlight-color);
+    box-shadow: 0 0 15px rgba(240, 196, 76, 0.3);
+}
+
+/* Estilo para quando o tempo estiver quase acabando */
+.countdown-item.imminent {
+    background-color: #4a2c00;
+    border: 2px solid var(--danger-color);
+    animation: pulse-border 1.5s infinite;
+}
+
+/* Estilo para quando a coleta for concluída */
+.countdown-item.finished {
+    background-color: #1a1a1a;
+    color: #555;
+    border: 1px dashed #555;
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.countdown-item .carrier {
+    font-weight: 600;
+    color: var(--highlight-color);
+}
+
+.countdown-item .timer {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+.countdown-item.finished .timer {
+    color: #555;
+}
+
+.countdown {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+.countdown.soon {
+    color: var(--danger-color);
+    animation: blink 1s infinite;
+}
+
+/* Animações */
+@keyframes blink {
+    50% { opacity: 0; }
+}
+@keyframes pulse-border {
+    0% { border-color: var(--danger-color); }
+    50% { border-color: rgba(214, 48, 49, 0.5); }
+    100% { border-color: var(--danger-color); }
+}
+
+/* --- RODAPÉ --- */
+.news-ticker-container {
+    position: relative;
+    width: calc(100% + var(--gap-geral) * 2);
+    margin-left: calc(-1 * var(--gap-geral));
+    background-color: var(--card-bg);
+    overflow: hidden;
+    padding: 10px 0;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    margin-top: var(--gap-geral);
+}
+.news-ticker {
+    display: inline-block;
+    white-space: nowrap;
+    animation: ticker-scroll 60s linear infinite;
+    padding-left: 100%;
+}
+.news-ticker p { margin: 0; font-size: 1em; }
+@keyframes ticker-scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
+
+/* --- ESTILOS PARA OS NOVOS GRÁFICOS DE OCORRÊNCIAS --- */
+.occurrences-widget {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.occurrences-widget .chart-container {
+    height: 180px; /* Altura fixa para o contêiner. */
+    overflow-y: auto; /* Adiciona rolagem se necessário. */
+    flex-grow: 1;
+    position: relative;
+    /* Estilos personalizados para a barra de rolagem. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--highlight-color) #222;
+}
+.occurrences-widget .chart-container canvas {
+    /* Força a 'tela' do gráfico a ocupar 100% da altura disponível. */
+    height: 100% !important;
+}
+.occurrences-widget .chart-container::-webkit-scrollbar {
+    width: 6px;
+}
+.occurrences-widget .chart-container::-webkit-scrollbar-track {
+    background: #222;
+}
+.occurrences-widget .chart-container::-webkit-scrollbar-thumb {
+    background-color: var(--highlight-color);
+    border-radius: 3px;
+    border: 1px solid #222;
+}
+/* =======================
+   MOTION KIT – ADIÇÕES
+   ======================= */
+
+/* 1) Entrada suave dos widgets ao carregar */
+body:not(.motion-ready) .widget {
+  opacity: 0;
+  transform: translateY(6px);
+}
+body.motion-ready .widget {
+  animation: fadeUp 460ms ease-out both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* (Opcional) leve “stagger” por coluna (ajusta se quiser) */
+.column-left  .widget:nth-child(2) { animation-delay: 60ms; }
+.column-left  .widget:nth-child(3) { animation-delay: 120ms; }
+.column-center .widget:nth-child(2) { animation-delay: 60ms; }
+.column-right .widget:nth-child(2) { animation-delay: 60ms; }
+.column-right .widget:nth-child(3) { animation-delay: 120ms; }
+
+/* 2) Mapa do Brasil – transições e hover */
+#brazil-map-svg .state {
+  transition: fill 450ms ease, stroke 450ms ease, filter 450ms ease;
+}
+#brazil-map-svg .state:hover {
+  stroke: var(--highlight-color);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px rgba(240,196,76,0.25));
+}
+#brazil-map-svg .state-label {
+  opacity: 0.9;
+  transition: opacity 300ms ease;
+}
+#map-container:hover .state-label { opacity: 1; }
+
+/* 3) Blocos de janela e cartões – microinterações */
+.janela-block,
+.widget {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.janela-block:hover,
+.widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+}
+
+/* 4) Reconhecimentos entram com slide + fade */
+.recognition-item {
+  animation: slideFadeIn 420ms ease-out both;
+}
+@keyframes slideFadeIn {
+  from { opacity:0; transform: translateY(6px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* 5) Coletas iminentes – “heartbeat” sutil junto ao seu pulse-border */
+.countdown-item.imminent {
+  animation: pulse-border 1.5s infinite, heartbeat 2.4s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  20%      { transform: scale(1.015); }
+  40%      { transform: scale(1); }
+  60%      { transform: scale(1.015); }
+  80%      { transform: scale(1); }
+}
+
+/* 6) Alerta de refrigerados – pulsa só quando a API pintou de vermelho (#d63031) */
+.alert-widget[style*="#d63031"] {
+  animation: alertGlow 1.1s ease-in-out infinite;
+}
+@keyframes alertGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(214,48,49,0.0); }
+  50%      { box-shadow: 0 0 24px rgba(214,48,49,0.40); }
+}
+
+/* 7) Ticker de notícias – pausa no hover */
+.news-ticker-container:hover .news-ticker {
+  animation-play-state: paused;
+}
+
+/* 8) Realce rápido quando um número é atualizado via JS */
+.countup-flash {
+  animation: flash 500ms ease-out;
+}
+@keyframes flash {
+  0%   { color: var(--highlight-color); text-shadow: 0 0 10px rgba(240,196,76,0.25); }
+  100% { color: inherit;               text-shadow: none; }
+}
+
+/* 9) Acessibilidade: respeitar “reduzir movimento” do sistema */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ===== Focus Cycle (sem invasão) ===== */
+body.focus-left  .column-left,
+body.focus-center .column-center,
+body.focus-right .column-right {
+  transform: scale(1.01);
+  transition: transform 300ms ease, filter 300ms ease, opacity 300ms ease;
+}
+
+body.focus-left  .column-center,
+body.focus-left  .column-right,
+body.focus-center .column-left,
+body.focus-center .column-right,
+body.focus-right .column-left,
+body.focus-right .column-center {
+  opacity: .9;
+  filter: saturate(.9) contrast(.98);
+}
+
+/* O container precisa ser relative para o overlay do skeleton */
+#map-container { position: relative; }
+
+/* Skeleton do mapa enquanto o <svg> está vazio (requer suporte a :has) */
+#map-container:has(#brazil-map-svg:empty)::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #2a2a2a 0%, #333 50%, #2a2a2a 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.1s linear infinite;
+}
+@keyframes shimmer {
+  0%   { background-position:   0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Micro-otimizações (opcionais e seguras) */
+.widget, .janela-block, #brazil-map-svg .state {
+  will-change: transform, filter;
+}
+
+/* ===== Tooltip do mapa (não-invasivo) ===== */
+.map-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  font: 12px/1.3 'Inter', sans-serif;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+  transform: translate(-50%, -120%);
+  opacity: 0;
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+.map-tooltip.show {
+  opacity: 1;
+  transform: translate(-50%, -100%);
+}
+.map-tooltip .tt-uf { color: var(--highlight-color); font-weight: 600; margin-right: 6px; }
+.map-tooltip .tt-val { opacity: .9; }
+
+

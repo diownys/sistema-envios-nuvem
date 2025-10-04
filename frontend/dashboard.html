@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Corporativo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Bibliotecas JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-grid">
+        <!-- Coluna Esquerda -->
+        <div class="column-left">
+            <div class="logo-container">
+                <img src="drogavet_neuvye.png" alt="Logo da Empresa">
+            </div>
+            <div class="widget clock-widget">
+                <div id="time"></div>
+                <div id="date"></div>
+            </div>
+            <!-- Widget de Previsão do Tempo (MOVido para cá) -->
+            <div class="widget weather-widget">
+                <div class="weather-header">
+                    <h2 id="city-name"></h2><img id="weather-icon" src="" alt="">
+                </div>
+                <div class="weather-body">
+                    <p id="temperature"></p><p id="description"></p>
+                </div>
+            </div>
+            <div class="widget birthday-widget">
+                <h2>Aniversariantes do Mês</h2>
+                <ul id="birthday-list" class="scrollable-content"></ul>
+            </div>
+            <div class="widget recognition-widget">
+                <h2>🏅 Mural de Reconhecimento</h2>
+                <div id="recognition-list" class="scrollable-content"></div>
+            </div>
+        </div>
+
+        <!-- Coluna Central -->
+<div class="column-center">
+    <!-- Widget de Janelas de Coleta -->
+    <div class="widget janela-stats-widget-horizontal">
+        <h2>Janelas de Coleta Pendentes</h2>
+        <div id="janela-stats-blocks" class="scrollable-content"></div>
+    </div>
+
+    <!-- Widget do Mapa -->
+    <div class="widget map-widget">
+        <h2>Envios Concluídos por Região</h2>
+        <div id="map-container">
+            <svg id="brazil-map-svg"></svg>
+        </div>
+        <div class="legend">
+            <div><span class="swatch" style="background:#706b5a;"></span>Baixo</div>
+            <div><span class="swatch" style="background:#A2946A;"></span>Médio</div>
+            <div><span class="swatch" style="background:#f0c44c;"></span>Alto</div>
+        </div>
+    </div>
+
+    <!-- Progresso Geral -->
+    <div class="widget progress-widget">
+        <h2>Progresso Geral</h2>
+        <div id="progress-chart-container">
+            <canvas id="progress-chart"></canvas>
+            <div id="progress-text"></div>
+        </div>
+    </div>
+
+    <!-- Totais -->
+    <div class="widget totals-widget">
+        <div class="total-item">
+            <span class="total-label">Concluídos Hoje</span>
+            <span id="total-envios" class="total-value">0</span>
+        </div>
+        <div class="total-item">
+            <span class="total-label">Valor Expedido (R$)</span>
+            <span id="valor-total" class="total-value">0,00</span>
+        </div>
+    </div>
+</div>
+
+        <!-- Coluna Direita -->
+        <div class="column-right">
+            <!-- Widget de Alertas -->
+            <div class="widget alert-widget">
+                <h2>❄️ Refrigerados Pendentes</h2>
+                <div id="refrigerated-alert" class="alert-value">0</div>
+            </div>
+            <!-- Widget de Ocorrências Internas -->
+            <div class="widget occurrences-widget">
+                <h2>Top 3 Internas</h2>
+                <div class="chart-container">
+                    <canvas id="internas-chart"></canvas>
+                </div>
+            </div>
+            <!-- Widget de Ocorrências Externas -->
+            <div class="widget occurrences-widget">
+                <h2>Top 3 Externas</h2>
+                <div class="chart-container">
+                    <canvas id="externas-chart"></canvas>
+                </div>
+            </div>
+            <!-- Widget de Contagem Regressiva -->
+            <div class="widget countdown-widget">
+                <h2>Próximas Coletas</h2>
+                <div id="countdown-container" class="scrollable-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé com Notícias -->
+    <footer class="news-ticker-container">
+        <div class="news-ticker"><p id="news-content"></p></div>
+    </footer>
+
+    <!-- Script JS principal -->
+    <script src="script.js"></script>
+</body>
+</html>
