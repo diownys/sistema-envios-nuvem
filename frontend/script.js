@@ -1,3 +1,4 @@
+window.addEventListener('DOMContentLoaded', () => {
 // --- CONFIGURAÇÕES GERAIS ---
 const URL_ANIVERSARIANTES = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=0&single=true&output=csv';
 const URL_RECONHECIMENTOS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=1414872186&single=true&output=csv';
@@ -351,7 +352,7 @@ function setupIntervals() {
 window.addEventListener('load', () => {
     startDashboard();
     setupIntervals();
-});
+}});
 
 
 /* ============================
