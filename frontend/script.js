@@ -19,52 +19,49 @@ let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada 
 
 async function updateApiData() {
     try {
-        // Busca todos os envios no Supabase
+        // Busca todos os envios do Supabase
         const { data: envios, error } = await supabase.from('envios').select('*')
         if (error) throw error
 
-        // === CALCULOS LOCAIS (iguais ao backend antigo) ===
+        // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10)
-        const concluidosHoje = envios.filter(e => {
-            if (e.status !== 'confirmado') return false
+        const enviosHoje = envios.filter(e => {
             if (!e.data_envio) return false
             const data = e.data_envio.slice(0, 10)
             return data === hoje
-        }).length
+        })
 
-        const totalEnvios = concluidosHoje
-        const valorTotal = envios.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0)
+        // === Cálculos gerais (somente de hoje) ===
+        const totalEnvios = enviosHoje.length
+        const concluidos = enviosHoje.filter(e => e.status === 'confirmado').length
+        const pendentes  = enviosHoje.filter(e => e.status !== 'confirmado').length
 
-        const concluidos = envios.filter(e => e.status === 'confirmado').length
-        const pendentes  = envios.filter(e => e.status !== 'confirmado').length
+        const valorTotal = enviosHoje.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0)
 
-        const alertaRefrigerados = envios.filter(e => e.tipo_transporte === 'refrigerado' && e.status !== 'confirmado').length
+        const alertaRefrigerados = enviosHoje.filter(
+            e => e.tipo_transporte === 'refrigerado' && e.status !== 'confirmado'
+        ).length
 
-        // Contagem por janela (caso exista campo janela_coleta)
+        // 🔹 Pendentes por janela (coletas do dia)
         const pendentesPorJanela = []
-        const janelas = [...new Set(envios.map(e => e.janela_coleta).filter(Boolean))]
+        const janelas = [...new Set(enviosHoje.map(e => e.janela_coleta).filter(Boolean))]
         for (const j of janelas) {
-            const total = envios.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length
+            const total = enviosHoje.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length
             pendentesPorJanela.push({ janela_coleta: j, total })
         }
 
-        // Contagem por estado (UF)
+        // 🔹 Envios por UF (apenas confirmados de hoje)
         const enviosPorUF = {}
-        for (const e of envios) {
+        for (const e of enviosHoje) {
             if (!e.estado && !e.uf) continue
-
-            // tenta pegar sigla de forma mais robusta
             const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2)
             if (!uf) continue
-
-            // apenas contar envios confirmados
             if (e.status === 'confirmado') {
                 enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1
             }
         }
 
-
-        // Atualiza o dashboard
+        // === Atualiza o dashboard ===
         document.getElementById('total-envios').textContent = totalEnvios
         document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
         updateProgressChart(pendentes, concluidos)
@@ -75,11 +72,16 @@ async function updateApiData() {
 
         updateJanelaBlocks(pendentesPorJanela)
         updateMap(enviosPorUF)
+
     } catch (error) {
         console.error("Erro ao buscar dados do Supabase:", error)
-        document.getElementById('map-container').innerHTML = `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`
+        document.getElementById('total-envios').textContent = '---'
+        document.getElementById('valor-total').textContent = '---'
+        document.getElementById('map-container').innerHTML =
+            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`
     }
 }
+
 
 async function fetchAndParseCsv(url) {
     const response = await fetch(url + '&cachebust=' + new Date().getTime());
