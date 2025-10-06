@@ -35,49 +35,54 @@ async function updateApiData() {
             return dataFormatada.toISOString().slice(0, 10) === hoje;
         });
 
-        // 🔹 Cálculo de concluidos e pendentes
-        const concluidos = enviosHoje.filter(e => e.status.toLowerCase() === 'confirmado').length;
-        const pendentes = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado').length;
-        const totalEnvios = concluidos + pendentes;
+        // 🔹 Separando concluidos e pendentes do dia
+        const concluidosHoje = enviosHoje.filter(e => e.status.toLowerCase() === 'confirmado');
+        const pendentesHoje = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado');
 
-        // 🔹 Valor total de vendas/envios de hoje
-        const valorTotal = enviosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
+        const totalEnviosHoje = concluidosHoje.length + pendentesHoje.length;
+
+        // 🔹 Valor expedido apenas dos concluidos
+        const valorExpedido = concluidosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
 
         // 🔹 Refrigerados pendentes
-        const alertaRefrigerados = enviosHoje.filter(
-            e => e.requer_refrigeracao && e.status.toLowerCase() !== 'confirmado'
-        ).length;
+        const alertaRefrigerados = pendentesHoje.filter(e => e.requer_refrigeracao).length;
 
         // 🔹 Pendentes por janela
-        const janelas = [...new Set(enviosHoje.map(e => e.janela_coleta).filter(Boolean))];
+        const janelas = [...new Set(pendentesHoje.map(e => e.janela_coleta).filter(Boolean))];
         const pendentesPorJanela = janelas.map(j => ({
             janela_coleta: j,
-            total: enviosHoje.filter(e => e.janela_coleta === j && e.status.toLowerCase() !== 'confirmado').length
+            total: pendentesHoje.filter(e => e.janela_coleta === j).length
         }));
 
-        // 🔹 Envios por UF (apenas considerando envios existentes)
+        // 🔹 Envios por UF (somente concluidos hoje)
         const enviosPorUF = {};
-        for (const e of enviosHoje) {
+        for (const e of concluidosHoje) {
             const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2);
             if (!uf) continue;
-            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1; // inclui todos do dia
+            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
         }
 
         // === Atualiza o dashboard ===
-        document.getElementById('total-envios').textContent = totalEnvios;
-        document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        updateProgressChart(concluidos, pendentes); // passa a ordem correta
+        document.getElementById('total-envios').textContent = totalEnviosHoje;
+        document.getElementById('valor-total').textContent = valorExpedido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
+        // Passa a barra de progresso: concluidos vs pendentes
+        updateProgressChart(concluidosHoje.length, pendentesHoje.length);
+
+        // Atualiza alertas refrigerados
         const alertEl = document.getElementById('refrigerated-alert');
         alertEl.textContent = alertaRefrigerados;
         alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75';
 
+        // Atualiza janelas pendentes
         updateJanelaBlocks(pendentesPorJanela);
+
+        // Atualiza mapa com os concluidos
         updateMap(enviosPorUF);
 
         console.table(enviosHoje);
         console.log('Pendentes por janela:', pendentesPorJanela);
-        console.log('Envios por UF:', enviosPorUF);
+        console.log('Envios concluidos por UF:', enviosPorUF);
 
     } catch (error) {
         console.error("Erro ao buscar dados do Supabase:", error);
@@ -89,6 +94,7 @@ async function updateApiData() {
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
     }
 }
+
 
 async function fetchAndParseCsv(url) {
     const response = await fetch(url + '&cachebust=' + new Date().getTime());
