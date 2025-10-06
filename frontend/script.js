@@ -37,9 +37,10 @@ async function updateApiData() {
 
         // 🔹 Separando concluidos e pendentes do dia
         const concluidosHoje = enviosHoje.filter(e => e.status.toLowerCase() === 'confirmado');
-        const pendentesHoje = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado');
+        const totalConcluidosHoje = concluidosHoje.length;
 
-        const totalEnviosHoje = concluidosHoje.length + pendentesHoje.length;
+        const pendentesHoje = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado');
+        const totalPendentesHoje = pendentesHoje.length;
 
         // 🔹 Valor expedido apenas dos concluidos
         const valorExpedido = concluidosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
@@ -54,7 +55,7 @@ async function updateApiData() {
             total: pendentesHoje.filter(e => e.janela_coleta === j).length
         }));
 
-        // 🔹 Envios por UF (somente concluidos hoje)
+        // 🔹 Envios por UF (somente concluidos hoje para pintar o mapa)
         const enviosPorUF = {};
         for (const e of concluidosHoje) {
             const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2);
@@ -63,11 +64,11 @@ async function updateApiData() {
         }
 
         // === Atualiza o dashboard ===
-        document.getElementById('total-envios').textContent = totalEnviosHoje;
+        document.getElementById('total-envios').textContent = totalConcluidosHoje; // só concluidos
         document.getElementById('valor-total').textContent = valorExpedido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-        // Passa a barra de progresso: concluidos vs pendentes
-        updateProgressChart(concluidosHoje.length, pendentesHoje.length);
+        // Atualiza barra de progresso: concluidos vs pendentes
+        updateProgressChart(totalConcluidosHoje, totalPendentesHoje);
 
         // Atualiza alertas refrigerados
         const alertEl = document.getElementById('refrigerated-alert');
@@ -77,7 +78,7 @@ async function updateApiData() {
         // Atualiza janelas pendentes
         updateJanelaBlocks(pendentesPorJanela);
 
-        // Atualiza mapa com os concluidos
+        // Atualiza mapa com envios concluidos
         updateMap(enviosPorUF);
 
         console.table(enviosHoje);
@@ -94,6 +95,7 @@ async function updateApiData() {
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
     }
 }
+
 
 
 async function fetchAndParseCsv(url) {
