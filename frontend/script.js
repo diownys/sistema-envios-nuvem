@@ -19,77 +19,77 @@ let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada 
 
 async function updateApiData() {
     try {
-        const { data: envios, error } = await supabase.from('envios').select('*')
-        if (error) throw error
+        // Busca todos os envios do Supabase
+        const { data: envios, error } = await supabase.from('envios').select('*');
+        if (error) throw error;
 
-        console.log('🔍 Total de registros retornados do Supabase:', envios?.length)
+        console.log('🔍 Total de registros retornados do Supabase:', envios?.length);
+        console.log('Primeiro registro detalhado:', JSON.stringify(envios[0], null, 2));
+        console.log('Campos disponíveis detalhados:', Object.keys(envios[0]));
 
-        // 🔹 Mostra o primeiro registro para descobrir o nome do campo de data
-        console.log('Primeiro registro detalhado:', JSON.stringify(envios[0], null, 2))
-        console.log('Campos disponíveis detalhados:', Object.keys(envios[0]))
-
-        // 🔹 Filtra apenas envios do dia atual
-        const hoje = new Date().toISOString().slice(0, 10)
+        // 🔹 Filtra apenas envios do dia atual (campo correto: created_at)
+        const hoje = new Date().toISOString().slice(0, 10);
         const enviosHoje = envios.filter(e => {
-            if (!e.data_envio) return false
-            const dataFormatada = new Date(e.data_envio)
-            if (isNaN(dataFormatada)) return false
-            return dataFormatada.toISOString().slice(0, 10) === hoje
-        })
+            if (!e.created_at) return false;
+            const dataFormatada = new Date(e.created_at);
+            if (isNaN(dataFormatada)) return false;
+            return dataFormatada.toISOString().slice(0, 10) === hoje;
+        });
 
-        console.table(enviosHoje)
-        console.log('Datas encontradas:', [...new Set(envios.map(e => e.data_envio))])
+        console.table(enviosHoje);
+        console.log('Datas encontradas:', [...new Set(envios.map(e => e.created_at))]);
 
         // === Cálculos gerais (somente de hoje) ===
-        const totalEnvios = enviosHoje.length
-        const concluidos = enviosHoje.filter(e => e.status === 'confirmado').length
-        const pendentes  = enviosHoje.filter(e => e.status !== 'confirmado').length
+        const totalEnvios = enviosHoje.length;
+        const concluidos = enviosHoje.filter(e => e.status === 'confirmado').length;
+        const pendentes  = enviosHoje.filter(e => e.status !== 'confirmado').length;
 
-        const valorTotal = enviosHoje.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0)
+        const valorTotal = enviosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
 
         const alertaRefrigerados = enviosHoje.filter(
-            e => e.tipo_transporte === 'refrigerado' && e.status !== 'confirmado'
-        ).length
+            e => e.requer_refrigeracao && e.status !== 'confirmado'
+        ).length;
 
         // 🔹 Pendentes por janela (coletas do dia)
-        const pendentesPorJanela = []
-        const janelas = [...new Set(enviosHoje.map(e => e.janela_coleta).filter(Boolean))]
+        const pendentesPorJanela = [];
+        const janelas = [...new Set(enviosHoje.map(e => e.janela_coleta).filter(Boolean))];
         for (const j of janelas) {
-            const total = enviosHoje.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length
-            pendentesPorJanela.push({ janela_coleta: j, total })
+            const total = enviosHoje.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length;
+            pendentesPorJanela.push({ janela_coleta: j, total });
         }
 
         // 🔹 Envios por UF (apenas confirmados de hoje)
-        const enviosPorUF = {}
+        const enviosPorUF = {};
         for (const e of enviosHoje) {
-            if (!e.estado && !e.uf) continue
-            const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2)
-            if (!uf) continue
+            if (!e.estado && !e.uf) continue;
+            const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2);
+            if (!uf) continue;
             if (e.status === 'confirmado') {
-                enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1
+                enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
             }
         }
 
         // === Atualiza o dashboard ===
-        document.getElementById('total-envios').textContent = totalEnvios
-        document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-        updateProgressChart(pendentes, concluidos)
+        document.getElementById('total-envios').textContent = totalEnvios;
+        document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        updateProgressChart(pendentes, concluidos);
 
-        const alertEl = document.getElementById('refrigerated-alert')
-        alertEl.textContent = alertaRefrigerados
-        alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75'
+        const alertEl = document.getElementById('refrigerated-alert');
+        alertEl.textContent = alertaRefrigerados;
+        alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75';
 
-        updateJanelaBlocks(pendentesPorJanela)
-        updateMap(enviosPorUF)
+        updateJanelaBlocks(pendentesPorJanela);
+        updateMap(enviosPorUF);
 
     } catch (error) {
-        console.error("Erro ao buscar dados do Supabase:", error)
-        document.getElementById('total-envios').textContent = '---'
-        document.getElementById('valor-total').textContent = '---'
+        console.error("Erro ao buscar dados do Supabase:", error);
+        document.getElementById('total-envios').textContent = '---';
+        document.getElementById('valor-total').textContent = '---';
         document.getElementById('map-container').innerHTML =
-            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`
+            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
     }
 }
+
 
 
 
@@ -718,3 +718,4 @@ window.addEventListener('load', () => {
 
   Chart.register(progressGlowPlugin);
 })();
+//comentario para atualização
