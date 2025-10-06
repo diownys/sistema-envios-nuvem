@@ -23,13 +23,19 @@ async function updateApiData() {
         const { data: envios, error } = await supabase.from('envios').select('*')
         if (error) throw error
 
+        console.log('🔍 Total de registros retornados do Supabase:', envios?.length)
+
         // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10)
         const enviosHoje = envios.filter(e => {
             if (!e.data_envio) return false
-            const data = e.data_envio.slice(0, 10)
-            return data === hoje
+            const dataFormatada = new Date(e.data_envio)
+            if (isNaN(dataFormatada)) return false
+            return dataFormatada.toISOString().slice(0, 10) === hoje
         })
+
+        console.table(enviosHoje)
+        console.log('Datas encontradas:', [...new Set(envios.map(e => e.data_envio))])
 
         // === Cálculos gerais (somente de hoje) ===
         const totalEnvios = enviosHoje.length
@@ -81,6 +87,7 @@ async function updateApiData() {
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`
     }
 }
+
 
 
 async function fetchAndParseCsv(url) {
