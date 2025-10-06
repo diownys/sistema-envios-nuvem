@@ -25,8 +25,8 @@ async function updateApiData() {
         console.log('🔍 Total de registros retornados do Supabase:', envios?.length)
 
         // 🔹 Mostra o primeiro registro para descobrir o nome do campo de data
-        console.log('Primeiro registro:', envios[0])
-        console.log('Campos disponíveis:', Object.keys(envios[0]))
+        console.log('Primeiro registro detalhado:', JSON.stringify(envios[0], null, 2))
+        console.log('Campos disponíveis detalhados:', Object.keys(envios[0]))
 
         // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10)
