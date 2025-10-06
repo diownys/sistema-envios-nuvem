@@ -3,7 +3,10 @@ const URL_ANIVERSARIANTES = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB
 const URL_RECONHECIMENTOS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=1414872186&single=true&output=csv';
 const URL_NOTICIAS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=645656320&single=true&output=csv';
 const URL_COLETAS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=670112626&single=true&output=csv'; // <<<--- COLE AQUI O NOVO LINK DA PLANILHA DE COLETAS
-const API_URL_STATS = 'http://100.97.126.124:8000/api/dashboard-stats'; // Use seu IP local aqui se necessário
+const API_URL_STATS = 'http://100.97.126.124:8000/api/dashboard-stats';
+const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let mapDataCache = null;
 let progressChart = null;
@@ -15,25 +18,49 @@ let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada 
 
 async function updateApiData() {
     try {
-        const response = await fetch(API_URL_STATS);
-        if (!response.ok) throw new Error('API do sistema de coletas não respondeu.');
-        const data = await response.json();
+        // Busca todos os envios no Supabase
+        const { data: envios, error } = await supabase.from('envios').select('*')
+        if (error) throw error
 
-        document.getElementById('total-envios').textContent = data.totalEnvios || 0;
-        document.getElementById('valor-total').textContent = (data.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        updateProgressChart(data.progresso.pendentes, data.progresso.concluidos);
-        const alertEl = document.getElementById('refrigerated-alert');
-        alertEl.textContent = data.alertaRefrigerados || 0;
-        alertEl.parentElement.style.backgroundColor = (data.alertaRefrigerados > 0) ? '#d63031' : '#273c75';
-        updateJanelaBlocks(data.pendentesPorJanela || []);
-        updateMap(data.enviosPorUF || {});
+        // === CALCULOS LOCAIS (iguais ao backend antigo) ===
+        const totalEnvios = envios.length
+        const valorTotal = envios.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0)
 
+        const concluidos = envios.filter(e => e.status === 'confirmado').length
+        const pendentes  = envios.filter(e => e.status !== 'confirmado').length
+
+        const alertaRefrigerados = envios.filter(e => e.tipo_transporte === 'refrigerado' && e.status !== 'confirmado').length
+
+        // Contagem por janela (caso exista campo janela_coleta)
+        const pendentesPorJanela = []
+        const janelas = [...new Set(envios.map(e => e.janela_coleta).filter(Boolean))]
+        for (const j of janelas) {
+            const total = envios.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length
+            pendentesPorJanela.push({ janela_coleta: j, total })
+        }
+
+        // Contagem por estado (UF)
+        const enviosPorUF = {}
+        for (const e of envios) {
+            if (!e.estado) continue
+            const uf = e.estado.toUpperCase()
+            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1
+        }
+
+        // Atualiza o dashboard
+        document.getElementById('total-envios').textContent = totalEnvios
+        document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+        updateProgressChart(pendentes, concluidos)
+
+        const alertEl = document.getElementById('refrigerated-alert')
+        alertEl.textContent = alertaRefrigerados
+        alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75'
+
+        updateJanelaBlocks(pendentesPorJanela)
+        updateMap(enviosPorUF)
     } catch (error) {
-        console.error("Erro ao buscar dados da API:", error);
-        document.getElementById('total-envios').textContent = '---';
-        document.getElementById('valor-total').textContent = '---';
-        document.getElementById('map-container').innerHTML = `<p style="color: #ff6b6b; text-align: center;">API offline</p>`;
-        document.getElementById('janela-stats-blocks').innerHTML = `<p style="color: #ff6b6b; text-align: center; width:100%;">API offline</p>`;
+        console.error("Erro ao buscar dados do Supabase:", error)
+        document.getElementById('map-container').innerHTML = `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`
     }
 }
 
