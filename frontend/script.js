@@ -1,42 +1,24 @@
-window.addEventListener('DOMContentLoaded', () => {
 // --- CONFIGURAÇÕES GERAIS ---
 const URL_ANIVERSARIANTES = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=0&single=true&output=csv';
 const URL_RECONHECIMENTOS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=1414872186&single=true&output=csv';
 const URL_NOTICIAS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=645656320&single=true&output=csv';
 const URL_COLETAS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=670112626&single=true&output=csv'; // <<<--- COLE AQUI O NOVO LINK DA PLANILHA DE COLETAS
-const API_URL_STATS = 'https://nfsuisftzddegihyhoha.supabase.co/functions/v1/dashboard-stats'; // Use seu IP local aqui se necessário
+const API_URL_STATS = 'http://100.97.126.124:8000/api/dashboard-stats'; // Use seu IP local aqui se necessário
 
 let mapDataCache = null;
 let progressChart = null;
 let internasChart = null;
 let externasChart = null;
 let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada segundo
-const supabase = createClient('https://nfsuisftzddegihyhoha.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI');
+
 // --- FUNÇÕES DE BUSCA DE DADOS ---
 
 async function updateApiData() {
     try {
-        // 1. Pega a sessão do usuário logado para obter o token
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session) throw new Error('Usuário não está logado.');
-
-        // 2. Faz a chamada para a API, incluindo o token de autorização
-        const response = await fetch(API_URL_STATS, {
-            headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-            }
-        });
-        
-        if (!response.ok) {
-            // Tenta ler a mensagem de erro da API se a resposta não for OK
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'API do sistema de coletas não respondeu corretamente.');
-        }
-        
+        const response = await fetch(API_URL_STATS);
+        if (!response.ok) throw new Error('API do sistema de coletas não respondeu.');
         const data = await response.json();
 
-        // O resto da sua função continua igual...
         document.getElementById('total-envios').textContent = data.totalEnvios || 0;
         document.getElementById('valor-total').textContent = (data.valorTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         updateProgressChart(data.progresso.pendentes, data.progresso.concluidos);
@@ -50,8 +32,8 @@ async function updateApiData() {
         console.error("Erro ao buscar dados da API:", error);
         document.getElementById('total-envios').textContent = '---';
         document.getElementById('valor-total').textContent = '---';
-        document.getElementById('map-container').innerHTML = `<p style="color: #ff6b6b; text-align: center;">API offline ou sem permissão</p>`;
-        document.getElementById('janela-stats-blocks').innerHTML = `<p style="color: #ff6b6b; text-align: center; width:100%;">API offline ou sem permissão</p>`;
+        document.getElementById('map-container').innerHTML = `<p style="color: #ff6b6b; text-align: center;">API offline</p>`;
+        document.getElementById('janela-stats-blocks').innerHTML = `<p style="color: #ff6b6b; text-align: center; width:100%;">API offline</p>`;
     }
 }
 
@@ -352,7 +334,7 @@ function setupIntervals() {
 window.addEventListener('load', () => {
     startDashboard();
     setupIntervals();
-}});
+});
 
 
 /* ============================
@@ -680,4 +662,3 @@ window.addEventListener('load', () => {
 
   Chart.register(progressGlowPlugin);
 })();
-//att
