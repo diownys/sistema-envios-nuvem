@@ -24,7 +24,15 @@ async function updateApiData() {
         if (error) throw error
 
         // === CALCULOS LOCAIS (iguais ao backend antigo) ===
-        const totalEnvios = envios.length
+        const hoje = new Date().toISOString().slice(0, 10)
+        const concluidosHoje = envios.filter(e => {
+            if (e.status !== 'confirmado') return false
+            if (!e.data_envio) return false
+            const data = e.data_envio.slice(0, 10)
+            return data === hoje
+        }).length
+
+        const totalEnvios = concluidosHoje
         const valorTotal = envios.reduce((acc, e) => acc + (Number(e.valor_total) || 0), 0)
 
         const concluidos = envios.filter(e => e.status === 'confirmado').length
@@ -43,10 +51,18 @@ async function updateApiData() {
         // Contagem por estado (UF)
         const enviosPorUF = {}
         for (const e of envios) {
-            if (!e.estado) continue
-            const uf = e.estado.toUpperCase()
-            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1
+            if (!e.estado && !e.uf) continue
+
+            // tenta pegar sigla de forma mais robusta
+            const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2)
+            if (!uf) continue
+
+            // apenas contar envios confirmados
+            if (e.status === 'confirmado') {
+                enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1
+            }
         }
+
 
         // Atualiza o dashboard
         document.getElementById('total-envios').textContent = totalEnvios
