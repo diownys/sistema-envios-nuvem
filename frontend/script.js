@@ -19,11 +19,14 @@ let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada 
 
 async function updateApiData() {
     try {
-        // Busca todos os envios do Supabase
         const { data: envios, error } = await supabase.from('envios').select('*')
         if (error) throw error
 
         console.log('🔍 Total de registros retornados do Supabase:', envios?.length)
+
+        // 🔹 Mostra o primeiro registro para descobrir o nome do campo de data
+        console.log('Primeiro registro:', envios[0])
+        console.log('Campos disponíveis:', Object.keys(envios[0]))
 
         // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10)
