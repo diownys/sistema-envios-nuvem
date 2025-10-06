@@ -25,9 +25,8 @@ async function updateApiData() {
 
         console.log('🔍 Total de registros retornados do Supabase:', envios?.length);
         console.log('Primeiro registro detalhado:', JSON.stringify(envios[0], null, 2));
-        console.log('Campos disponíveis detalhados:', Object.keys(envios[0]));
 
-        // 🔹 Filtra apenas envios do dia atual (campo correto: created_at)
+        // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10);
         const enviosHoje = envios.filter(e => {
             if (!e.created_at) return false;
@@ -36,43 +35,38 @@ async function updateApiData() {
             return dataFormatada.toISOString().slice(0, 10) === hoje;
         });
 
-        console.table(enviosHoje);
-        console.log('Datas encontradas:', [...new Set(envios.map(e => e.created_at))]);
+        // 🔹 Cálculo de concluidos e pendentes
+        const concluidos = enviosHoje.filter(e => e.status.toLowerCase() === 'confirmado').length;
+        const pendentes = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado').length;
+        const totalEnvios = concluidos + pendentes;
 
-        // === Cálculos gerais (somente de hoje) ===
-        const totalEnvios = enviosHoje.length;
-        const concluidos = enviosHoje.filter(e => e.status === 'confirmado').length;
-        const pendentes  = enviosHoje.filter(e => e.status !== 'confirmado').length;
-
+        // 🔹 Valor total de vendas/envios de hoje
         const valorTotal = enviosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
 
+        // 🔹 Refrigerados pendentes
         const alertaRefrigerados = enviosHoje.filter(
-            e => e.requer_refrigeracao && e.status !== 'confirmado'
+            e => e.requer_refrigeracao && e.status.toLowerCase() !== 'confirmado'
         ).length;
 
-        // 🔹 Pendentes por janela (coletas do dia)
-        const pendentesPorJanela = [];
+        // 🔹 Pendentes por janela
         const janelas = [...new Set(enviosHoje.map(e => e.janela_coleta).filter(Boolean))];
-        for (const j of janelas) {
-            const total = enviosHoje.filter(e => e.janela_coleta === j && e.status !== 'confirmado').length;
-            pendentesPorJanela.push({ janela_coleta: j, total });
-        }
+        const pendentesPorJanela = janelas.map(j => ({
+            janela_coleta: j,
+            total: enviosHoje.filter(e => e.janela_coleta === j && e.status.toLowerCase() !== 'confirmado').length
+        }));
 
-        // 🔹 Envios por UF (apenas confirmados de hoje)
+        // 🔹 Envios por UF (apenas considerando envios existentes)
         const enviosPorUF = {};
         for (const e of enviosHoje) {
-            if (!e.estado && !e.uf) continue;
             const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2);
             if (!uf) continue;
-            if (e.status === 'confirmado') {
-                enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
-            }
+            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1; // inclui todos do dia
         }
 
         // === Atualiza o dashboard ===
         document.getElementById('total-envios').textContent = totalEnvios;
         document.getElementById('valor-total').textContent = valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        updateProgressChart(pendentes, concluidos);
+        updateProgressChart(concluidos, pendentes); // passa a ordem correta
 
         const alertEl = document.getElementById('refrigerated-alert');
         alertEl.textContent = alertaRefrigerados;
@@ -81,17 +75,20 @@ async function updateApiData() {
         updateJanelaBlocks(pendentesPorJanela);
         updateMap(enviosPorUF);
 
+        console.table(enviosHoje);
+        console.log('Pendentes por janela:', pendentesPorJanela);
+        console.log('Envios por UF:', enviosPorUF);
+
     } catch (error) {
         console.error("Erro ao buscar dados do Supabase:", error);
         document.getElementById('total-envios').textContent = '---';
         document.getElementById('valor-total').textContent = '---';
         document.getElementById('map-container').innerHTML =
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
+        document.getElementById('janela-stats-blocks').innerHTML =
+            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
     }
 }
-
-
-
 
 async function fetchAndParseCsv(url) {
     const response = await fetch(url + '&cachebust=' + new Date().getTime());
