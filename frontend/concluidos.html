@@ -59,27 +59,34 @@
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
 
-    // NOVO: Função centralizada para aplicar todos os filtros
+    // ATUALIZADO: Função com a correção de fuso horário
     function aplicarFiltros() {
         const query = searchInput.value.toLowerCase();
         
-        // Pega as datas dos inputs e ajusta para o início e fim do dia
-        const startDate = new Date(startDateInput.value);
-        startDate.setHours(0, 0, 0, 0);
+        // Pega as datas dos inputs como strings 'YYYY-MM-DD'
+        const startDateString = startDateInput.value;
+        const endDateString = endDateInput.value;
+        
+        if (!startDateString || !endDateString) {
+            renderTable([]); // Se não houver data, limpa a tabela
+            return;
+        }
 
-        const endDate = new Date(endDateInput.value);
-        endDate.setHours(23, 59, 59, 999);
+        // CORREÇÃO: Constrói as datas de forma segura, usando o fuso horário local
+        const [startYear, startMonth, startDay] = startDateString.split('-').map(Number);
+        const startDate = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+
+        const [endYear, endMonth, endDay] = endDateString.split('-').map(Number);
+        const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
         const vendasFiltradas = concluidosData.filter(venda => {
-            // Filtro de texto
             const textMatch = (venda.cliente_nome?.toLowerCase().includes(query)) ||
                               (venda.codigo_venda?.toLowerCase().includes(query));
             
-            // Filtro de data
             const vendaDate = new Date(venda.updated_at);
             const dateMatch = vendaDate >= startDate && vendaDate <= endDate;
 
-            return textMatch && dateMatch; // Retorna verdadeiro apenas se ambos os filtros corresponderem
+            return textMatch && dateMatch;
         });
 
         renderTable(vendasFiltradas);
@@ -89,14 +96,12 @@
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = '/login.html'; return; }
         
-        // NOVO: Define a data de hoje nos campos de data ao carregar a página
-        const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        const hoje = new Date().toISOString().split('T')[0];
         startDateInput.value = hoje;
         endDateInput.value = hoje;
         
         await carregarConcluidos();
         
-        // ATUALIZADO: Event listeners agora chamam a função central de filtro
         searchInput.addEventListener('input', aplicarFiltros);
         startDateInput.addEventListener('change', aplicarFiltros);
         endDateInput.addEventListener('change', aplicarFiltros);
@@ -130,7 +135,7 @@
             const { data, error } = await supabase.functions.invoke('get-concluidos');
             if (error) throw error;
             concluidosData = data.concluidos;
-            aplicarFiltros(); // ATUALIZADO: Aplica o filtro (de hoje) assim que os dados carregam
+            aplicarFiltros();
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
         }
@@ -148,7 +153,6 @@
                     alert(`Erro ao reverter: ${error.message}`);
                     target.textContent = 'Reverter';
                 } else {
-                    // ATUALIZADO: Remove da lista principal e aplica os filtros novamente
                     concluidosData = concluidosData.filter(v => v.id != vendaId);
                     aplicarFiltros(); 
                 }
