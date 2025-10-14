@@ -545,3 +545,21 @@ window.addEventListener('load', () => {
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   }
 })();
+function startScrolling(widgetSelector) {
+    const widget = document.querySelector(widgetSelector);
+    if (!widget) return;
+
+    const ul = widget.querySelector('ul');
+    if (!ul) return;
+
+    // Duplicar os itens para criar loop infinito
+    ul.innerHTML += ul.innerHTML;
+
+    // Ajustar velocidade com CSS
+    ul.style.animation = 'scrollVertical 12s linear infinite';
+}
+
+// Chamar após popular os dados
+startScrolling('#birthday-list');
+startScrolling('#recognition-list');
+

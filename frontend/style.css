@@ -1,5 +1,6 @@
 /* --- CONFIGURAÇÕES GERAIS E VARIÁVEIS --- */
 :root {
+    /* Variáveis base (mantidas de ambos, são idênticas) */
     --font-size-base: clamp(12px, 0.9vw, 16px);
     --padding-widget: 15px;
     --gap-geral: 20px;
@@ -67,7 +68,8 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     display: flex;
     flex-direction: column;
     gap: var(--gap-geral);
-    overflow-y: auto;
+    /* Mantém o overflow das colunas, mas o scroll vertical vai no conteúdo */
+    overflow-y: hidden; /* Controlado internamente pelos widgets */
     overflow-x: hidden;
     min-height: 0;
 }
@@ -87,6 +89,7 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
 
+/* Classe de rolagem padrão (apenas para widgets que não são murais) */
 .scrollable-content {
     overflow-y: auto;
     flex-grow: 1;
@@ -99,7 +102,9 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-/* --- DASHBOARD HEADER --- */
+/* ------------------------------------- */
+/* --- WIDGETS DE CABEÇALHO (DO 1º CÓDIGO) --- */
+/* ------------------------------------- */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -122,7 +127,8 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 }
 
 #date-time { display: flex; flex-direction: column; text-align: right; }
-#time { font-size: 2.5em; font-weight: 700; color: var(--text-color); }
+/* Usamos #clock no HTML corrigido, mas mantemos #time do CSS original por compatibilidade se for o caso */
+#time, #clock { font-size: 2.5em; font-weight: 700; color: var(--text-color); } 
 #date { font-size: 0.9em; text-transform: capitalize; }
 
 #weather { display: flex; align-items: center; gap: 0.5rem; }
@@ -130,73 +136,82 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 #temperature { font-size: 1.5em; font-weight: 700; margin: 0; color: var(--highlight-color); }
 #city-name { display: none; }
 
-/* --- SCROLLER VERTICAL TIPO MURAL --- */
-.mural {
-    height: 120px;
-    overflow: hidden;
-    position: relative;
-}
-
-.mural ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+/* ------------------------------------- */
+/* --- SCROLL VERTICAL MURAL (DO 2º CÓDIGO) --- */
+/* ------------------------------------- */
+.birthday-widget, .recognition-widget {
+    /* Garante que o widget em si se comporte como container do flex/scroll */
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    animation: scrollVertical 10s linear infinite;
-}
-
-.mural ul:hover {
-    animation-play-state: paused;
-}
-
-.mural li {
-    background-color: var(--scroller-card-bg);
-    padding: 10px;
-    border-radius: 6px;
-    white-space: nowrap;
+    gap: 10px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--scroller-card-text);
-    transition: transform 0.3s ease, background-color 0.3s ease;
+    flex-grow: 1; /* Permite que ocupe o espaço restante */
 }
 
-.mural li:hover {
-    background-color: var(--highlight-color);
-    transform: scale(1.02);
-}
-
-@keyframes scrollVertical {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
-}
-
-.birthday-widget .mural,
-.recognition-widget .mural {
+/* O .scrollable-content ou div que envolve a UL deve controlar a altura */
+.birthday-widget .scrollable-content,
+.recognition-widget .scrollable-content {
+    /* Altura definida pelo número de itens visíveis + padding/gap */
+    height: 100%; /* Ocupa 100% da altura restante do widget */
+    overflow: hidden;
+    position: relative;
     flex-grow: 1;
 }
 
-.birthday-widget .mural li,
-.recognition-widget .mural li {
-    background-color: var(--scroller-card-bg);
-    color: var(--scroller-card-text);
-    border-left: 4px solid var(--highlight-color);
+.birthday-widget ul, .recognition-widget ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* A animação scrollVertical será aplicada aqui */
+    animation: scrollVertical 12s linear infinite; 
+    padding: 0;
+    margin: 0;
+    /* Necessário para que a rolagem em loop funcione, duplique os itens via JS! */
+    height: max-content; 
+    white-space: nowrap; 
 }
 
-/* --- CARDS HORIZONTAIS (fallback) --- */
-.birthday-card, .recognition-card {
-    flex-basis: auto;
-    flex-shrink: 0;
-}
-
-/* --- ROLAGEM PAUSA NO HOVER --- */
-.birthday-widget .mural:hover ul,
-.recognition-widget .mural:hover ul {
+.birthday-widget ul:hover,
+.recognition-widget ul:hover {
     animation-play-state: paused;
 }
 
-/* --- COLUNA CENTRAL --- */
+.birthday-widget li, .recognition-widget li {
+    list-style: none;
+    background-color: var(--scroller-card-bg);
+    color: var(--scroller-card-text);
+    border-left: 4px solid var(--highlight-color);
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    min-height: 40px; /* Garante altura uniforme */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+}
+
+.birthday-widget li:hover, .recognition-widget li:hover {
+    background-color: var(--highlight-color);
+    color: #1e1e1e; /* Texto escuro no hover de destaque */
+    transform: scale(1.02);
+}
+
+/* Emoji antes dos itens */
+.birthday-widget li::before { content: "🎂 "; margin-right:6px; flex-shrink: 0; }
+.recognition-widget li::before { content: "🏆 "; margin-right:6px; flex-shrink: 0; }
+
+/* --- Animação de scroll vertical em loop --- */
+@keyframes scrollVertical {
+    /* 100% é a altura da lista original, se duplicada corretamente */
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); } 
+}
+
+
+/* ------------------------------------- */
+/* --- COLUNA CENTRAL (DO 1º CÓDIGO) --- */
+/* ------------------------------------- */
 .janela-stats-widget-horizontal { flex-shrink: 0; }
 #janela-stats-blocks {
     display: flex;
@@ -235,7 +250,9 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 .total-label { font-size: 0.9em; color: var(--secondary-text); margin-bottom: 5px; }
 .total-value { font-size: 2em; font-weight: 700; color: var(--highlight-color); }
 
-/* --- COLUNA DIREITA --- */
+/* ------------------------------------- */
+/* --- COLUNA DIREITA (DO 1º CÓDIGO) --- */
+/* ------------------------------------- */
 .alert-widget { text-align: center; transition: background-color 0.5s; background-color: var(--info-color); flex-shrink: 0; }
 .alert-widget h2 { color: #fff; border: none; }
 .alert-value { font-size: 3em; font-weight: 700; color: #fff; }
@@ -273,7 +290,7 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 .countdown-item.finished .timer { color: #555; }
 .countdown.soon { color: var(--danger-color); animation: blink 1s infinite; }
 
-/* --- RODAPÉ --- */
+/* --- RODAPÉ (DO 1º CÓDIGO) --- */
 .news-ticker-container {
     position: relative;
     width: calc(100% + var(--gap-geral) * 2);
@@ -293,7 +310,9 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 }
 .news-ticker p { margin: 0; font-size: 1em; }
 
-/* --- ANIMAÇÕES --- */
+/* ------------------------------------- */
+/* --- ANIMAÇÕES E OTILIZAÇÕES (DO 1º CÓDIGO) --- */
+/* ------------------------------------- */
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes pulse-border { 0% { border-color: var(--danger-color); } 50% { border-color: rgba(214,48,49,0.5); } 100% { border-color: var(--danger-color); } }
 @keyframes ticker-scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
@@ -319,7 +338,8 @@ body.motion-ready .widget { animation: fadeUp 460ms ease-out both; }
 #brazil-map-svg .state-label { opacity: 0.9; transition: opacity 300ms ease; }
 #map-container:hover .state-label { opacity: 1; }
 
-.recognition-card { animation: slideFadeIn 420ms ease-out both; }
+/* Usamos .recognition-card/li em vez de .recognition-card para o slideFadeIn */
+.recognition-widget li { animation: slideFadeIn 420ms ease-out both; } 
 .alert-widget[style*="#d63031"] { animation: alertGlow 1.1s ease-in-out infinite; }
 .news-ticker-container:hover .news-ticker { animation-play-state: paused; }
 .countup-flash { animation: flash 500ms ease-out; }
