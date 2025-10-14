@@ -421,3 +421,11 @@ html, body { height: 100%; }
 .weather-body #description {
   font-size: clamp(.8rem, 1.4vmin, .95rem);
 }
+
+/* Override da grade para dar min/max confortáveis às colunas */
+.dashboard-grid {
+  grid-template-columns:
+    minmax(220px, 22%)  /* esquerda  */
+    minmax(0, 1fr)      /* centro    */
+    minmax(260px, 24%); /* direita   */
+}

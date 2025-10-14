@@ -1,36 +1,41 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard Corporativo - ATLAS S.A</title>
-  <link rel="icon" href="favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css" />
+  favicon.ico
+  <link rel="preconnect" href="https://fonts.googleapiscom
+  <!-- Mesma fonte que você usa -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;display=swap
+  ./style.css
 </head>
 <body>
-  <header class="dashboard-header">
-    <div class="logo-container">
-      <img src="./drogavet_neuvye.png" alt="Logo">
-    </div>
-    <div class="header-info">
-      <div id="weather">
-        <img id="weather-icon" alt=""/>
-        <div>
-          <div id="temperature">--°C</div>
-          <small id="description">Carregando clima...</small>
+  <!-- TOPO: Clima + Relógio (esquerda) | Logo (direita) -->
+  <header class="dashboard-header" role="banner" aria-label="Cabeçalho do dashboard">
+    <div class="header-left">
+      <!-- Clima (mantém ids do seu JS) -->
+      <section class="widget widget--sm weather-widget" aria-label="Clima">
+        <div class="weather-header">
+          <h2>☁️ Clima</h2>
+          <span id="city-name">--</span>
         </div>
-      </div>
-      <div id="date-time">
+        <div class="weather-body">
+          <img id="weather-icon" alt="Ícone do clima" width="64" height="64"/>
+          <p id="temperature">--°C</p>
+          <p id="description">Carregando clima...</p>
+        </div>
+      </section>
+
+      <!-- Relógio (mantém ids do seu JS) -->
+      <section class="widget widget--sm clock-widget" aria-label="Relógio">
         <div id="time"><span id="clock">--:--:--</span></div>
         <div id="date">&nbsp;</div>
-      </div>
+      </section>
     </div>
-  </header>
 
-  <main class="dashboard-grid">
+    <div class="header-right logo-container">
+      <img src="./drogavet_neuvye.png" alt="Logo" class="logo-img="dashboard-grid" role="main">
     <section class="column-left">
       <div class="widget birthday-widget">
         <h2>🎂 Aniversariantes do Mês</h2>
@@ -55,9 +60,9 @@
       <div class="widget map-widget">
         <h2>🗺️ Envios Concluídos por UF</h2>
         <div id="map-container">
-          <svg id="brazil-map-svg"></svg>
+          <svg id="brazil-map-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Mapa do Brasil"></svg>
         </div>
-        <div class="legend">
+        <div class="legend" aria-label="Legenda do mapa">
           <span><span class="swatch" style="background:#333"></span>Baixo</span>
           <span><span class="swatch" style="background:#706b5a"></span>Médio</span>
           <span><span class="swatch" style="background:#A2946A"></span>Alto</span>
@@ -97,6 +102,7 @@
         <h2>📈 Top 3 Ocorrências Internas</h2>
         <div class="chart-container"><canvas id="internas-chart"></canvas></div>
       </div>
+
       <div class="widget occurrences-widget">
         <h2>📈 Top 3 Ocorrências Externas</h2>
         <div class="chart-container"><canvas id="externas-chart"></canvas></div>
@@ -109,12 +115,12 @@
     </section>
   </main>
 
-  <footer class="news-ticker-container">
+  <footer class="news-ticker-container" role="contentinfo" aria-label="Comunicados">
     <div class="news-ticker"><p id="news-content">Carregando comunicados...</p></div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script type="module" src="./script.js"></script>
+  https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js</script>
+  <script src="sdelivr.net/npm/chart.js@4/dist/chart.umd.min.js</script>
+  </script.js</script>
 </body>
 </html>
