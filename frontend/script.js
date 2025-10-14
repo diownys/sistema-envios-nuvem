@@ -24,22 +24,22 @@ async function updateApiData() {
         if (error) throw error;
 
         console.log('🔍 Total de registros retornados do Supabase:', envios?.length);
-        console.log('Primeiro registro detalhado:', JSON.stringify(envios?.[0] || {}, null, 2));
+        console.log('Primeiro registro detalhado:', JSON.stringify(envios[0], null, 2));
 
         // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10);
-        const enviosHoje = (envios || []).filter(e => {
-            if (!e?.created_at) return false;
+        const enviosHoje = envios.filter(e => {
+            if (!e.created_at) return false;
             const dataFormatada = new Date(e.created_at);
             if (isNaN(dataFormatada)) return false;
             return dataFormatada.toISOString().slice(0, 10) === hoje;
         });
 
         // 🔹 Separando concluidos e pendentes do dia
-        const concluidosHoje = enviosHoje.filter(e => String(e?.status || '').toLowerCase() === 'confirmado');
+        const concluidosHoje = enviosHoje.filter(e => e.status.toLowerCase() === 'confirmado');
         const totalConcluidosHoje = concluidosHoje.length;
 
-        const pendentesHoje = enviosHoje.filter(e => String(e?.status || '').toLowerCase() !== 'confirmado');
+        const pendentesHoje = enviosHoje.filter(e => e.status.toLowerCase() !== 'confirmado');
         const totalPendentesHoje = pendentesHoje.length;
 
         // 🔹 Valor expedido apenas dos concluidos
@@ -58,28 +58,22 @@ async function updateApiData() {
         // 🔹 Envios por UF (somente concluidos hoje para pintar o mapa)
         const enviosPorUF = {};
         for (const e of concluidosHoje) {
-            const uf = (e.uf || e.estado || '').toString().trim().toUpperCase().slice(0, 2);
+            const uf = (e.uf || e.estado || '').trim().toUpperCase().slice(0, 2);
             if (!uf) continue;
             enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
         }
 
         // === Atualiza o dashboard ===
-        const totalEnviosEl = document.getElementById('total-envios');
-        if (totalEnviosEl) totalEnviosEl.textContent = String(totalConcluidosHoje); // só concluidos
-
-        const valorTotalEl = document.getElementById('valor-total');
-        if (valorTotalEl) valorTotalEl.textContent = valorExpedido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        document.getElementById('total-envios').textContent = totalConcluidosHoje; // só concluidos
+        document.getElementById('valor-total').textContent = valorExpedido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
         // Atualiza barra de progresso: concluidos vs pendentes
-        // Note: agora a função recebe (concluidos, pendentes)
         updateProgressChart(totalConcluidosHoje, totalPendentesHoje);
 
         // Atualiza alertas refrigerados
         const alertEl = document.getElementById('refrigerated-alert');
-        if (alertEl) {
-            alertEl.textContent = String(alertaRefrigerados);
-            if (alertEl.parentElement) alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75';
-        }
+        alertEl.textContent = alertaRefrigerados;
+        alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75';
 
         // Atualiza janelas pendentes
         updateJanelaBlocks(pendentesPorJanela);
@@ -93,15 +87,11 @@ async function updateApiData() {
 
     } catch (error) {
         console.error("Erro ao buscar dados do Supabase:", error);
-        const totalEnviosEl = document.getElementById('total-envios');
-        if (totalEnviosEl) totalEnviosEl.textContent = '---';
-        const valorTotalEl = document.getElementById('valor-total');
-        if (valorTotalEl) valorTotalEl.textContent = '---';
-        const mapContainer = document.getElementById('map-container');
-        if (mapContainer) mapContainer.innerHTML =
+        document.getElementById('total-envios').textContent = '---';
+        document.getElementById('valor-total').textContent = '---';
+        document.getElementById('map-container').innerHTML =
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
-        const janelaBlocks = document.getElementById('janela-stats-blocks');
-        if (janelaBlocks) janelaBlocks.innerHTML =
+        document.getElementById('janela-stats-blocks').innerHTML =
             `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
     }
 }
@@ -228,14 +218,10 @@ function getWeather() {
     fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city},BR&appid=${apiKey}&lang=pt_br&units=metric`)
     .then(response => (response.ok ? response.json() : Promise.reject('Erro de Clima')))
     .then(data => {
-        const cityNameEl = document.getElementById('city-name');
-        if (cityNameEl) cityNameEl.textContent = data.name;
-        const temperatureEl = document.getElementById('temperature');
-        if (temperatureEl) temperatureEl.textContent = `${Math.round(data.main.temp)}°C`;
-        const descriptionEl = document.getElementById('description');
-        if (descriptionEl) descriptionEl.textContent = data.weather[0].description;
-        const weatherIcon = document.getElementById('weather-icon');
-        if (weatherIcon) weatherIcon.src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
+        document.getElementById('city-name').textContent = data.name;
+        document.getElementById('temperature').textContent = `${Math.round(data.main.temp)}°C`;
+        document.getElementById('description').textContent = data.weather[0].description;
+        document.getElementById('weather-icon').src = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
     }).catch(error => console.error('Erro ao buscar o clima:', error));
 }
 function createOrUpdateBarChart(chart, canvasId, data, label, color, hoverColor) {
@@ -277,7 +263,6 @@ async function getBirthdays() {
         const currentDay = today.getDate();
         const monthBirthdays = allBirthdays.filter(p => Number(p.month) === currentMonth).sort((a, b) => Number(a.day) - Number(b.day));
         const list = document.getElementById('birthday-list');
-        if (!list) return;
         list.innerHTML = '<li>Nenhum aniversariante no mês.</li>';
         if (monthBirthdays.length > 0) {
             list.innerHTML = '';
@@ -294,7 +279,6 @@ async function getRecognitions() {
     try {
         const data = await fetchAndParseCsv(URL_RECONHECIMENTOS);
         const list = document.getElementById('recognition-list');
-        if (!list) return;
         list.innerHTML = '';
         if (!data || data.length === 0 || !data[0].recognized) {
             list.innerHTML = '<p>Nenhum reconhecimento no mural.</p>';
@@ -310,17 +294,14 @@ async function getNews() {
         const data = await fetchAndParseCsv(URL_NOTICIAS);
         if (data && data.length > 0 && data[0].message) {
             const newsString = data.map(item => item.message).filter(msg => msg).join(' &nbsp; • &nbsp; ');
-            const el = document.getElementById('news-content');
-            if (el) el.innerHTML = newsString;
+            document.getElementById('news-content').innerHTML = newsString;
         }
     } catch (error) { console.error('Erro ao carregar notícias:', error); }
 }
 function updateClock() {
-    const now = new Date();
-    const clockSpan = document.getElementById('clock');
-    const dateEl = document.getElementById('date');
-    if (clockSpan) clockSpan.textContent = now.toLocaleTimeString('pt-BR');
-    if (dateEl) dateEl.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const now = new Date(), timeEl = document.getElementById('time'), dateEl = document.getElementById('date');
+    timeEl.textContent = now.toLocaleTimeString('pt-BR');
+    dateEl.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 function updateJanelaBlocks(janelas) {
     const container = document.getElementById('janela-stats-blocks');
@@ -338,18 +319,12 @@ function updateJanelaBlocks(janelas) {
         container.innerHTML += `<div class="janela-block"><div class="janela-block-name">${item.janela_coleta}</div><div class="janela-block-value" style="font-size: ${fontSize.toFixed(1)}em;">${item.total}</div></div>`;
     });
 }
-
-/**
- * Agora a função recebe (concluidos, pendentes)
- * Mantive o gráfico exatamente como estava (dados: [concluidos, pendentes])
- */
-function updateProgressChart(concluidos, pendentes) {
+function updateProgressChart(pendentes, concluidos) {
     const ctx = document.getElementById('progress-chart')?.getContext('2d');
     if (!ctx) return;
-    const total = (Number(concluidos) || 0) + (Number(pendentes) || 0);
-    const percentual = total > 0 ? Math.round((Number(concluidos) / total) * 100) : 0;
-    const progressTextEl = document.getElementById('progress-text');
-    if (progressTextEl) progressTextEl.innerHTML = `<div id="progress-percent">${percentual}%</div><div id="progress-details">${concluidos} de ${total}</div>`;
+    const total = (pendentes || 0) + (concluidos || 0);
+    const percentual = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+    document.getElementById('progress-text').innerHTML = `<div id="progress-percent">${percentual}%</div><div id="progress-details">${concluidos} de ${total}</div>`;
     if (progressChart) {
         progressChart.data.datasets[0].data = [concluidos, pendentes];
         progressChart.update();
@@ -361,7 +336,6 @@ function updateProgressChart(concluidos, pendentes) {
         });
     }
 }
-
 async function updateMap(destinos) {
     try {
         if (!mapDataCache) {
@@ -395,8 +369,7 @@ async function updateMap(destinos) {
         });
     } catch(e) {
         console.error("Erro ao renderizar o mapa:", e);
-        const mapContainer = document.getElementById('map-container');
-        if (mapContainer) mapContainer.innerHTML = `<p style="color: #ff6b6b; text-align:center;">Erro: ${e.message}</p>`;
+        document.getElementById('map-container').innerHTML = `<p style="color: #ff6b6b; text-align:center;">Erro: ${e.message}</p>`;
     }
 }
 
@@ -524,6 +497,7 @@ window.addEventListener('load', () => {
     const raw = String(text).trim();
 
     if (mode === 'currency') {
+      // Ex.: "1.234,56" -> 1234.56 | "R$ 2.000,00" -> 2000
       const normalized = raw
         .replace(/[^\d,.\-]/g, '') // mantém dígitos, vírgula, ponto e sinal
         .replace(/\./g, '')        // remove milhares
@@ -540,26 +514,213 @@ window.addEventListener('load', () => {
 
   function formatValue(value, mode) {
     if (mode === 'currency') {
-      return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+      return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   }
 })();
-function startScrolling(widgetSelector) {
-    const widget = document.querySelector(widgetSelector);
-    if (!widget) return;
 
-    const ul = widget.querySelector('ul');
-    if (!ul) return;
+/* Focus Cycle – destaca uma coluna por vez (20s) */
+(function () {
+  const ENABLE_FOCUS = true;      // mude para false se quiser desligar
+  const INTERVAL_MS  = 20000;     // 20s
 
-    // Duplicar os itens para criar loop infinito
-    ul.innerHTML += ul.innerHTML;
+  if (!ENABLE_FOCUS) return;
+  const classes = ['focus-left','focus-center','focus-right'];
+  let idx = 0;
 
-    // Ajustar velocidade com CSS
-    ul.style.animation = 'scrollVertical 12s linear infinite';
-}
+  function apply() {
+    document.body.classList.remove(...classes);
+    document.body.classList.add(classes[idx]);
+    idx = (idx + 1) % classes.length;
+  }
 
-// Chamar após popular os dados
-startScrolling('#birthday-list');
-startScrolling('#recognition-list');
+  // primeira aplicação imediata e depois o ciclo
+  apply();
+  setInterval(apply, INTERVAL_MS);
+})();
 
+/* ===== Tooltip do Mapa (UF + envios) ===== */
+(function () {
+  const svg = document.getElementById('brazil-map-svg');
+  if (!svg || !window.d3) return;
+
+  // cria o tooltip 1x
+  const tip = document.createElement('div');
+  tip.className = 'map-tooltip';
+  document.body.appendChild(tip);
+
+  const show = (x, y, uf, val) => {
+    tip.innerHTML = `<span class="tt-uf">${uf}</span><span class="tt-val">${val > 0 ? `${val} envios` : 'sem envios'}</span>`;
+    tip.style.left = `${x}px`;
+    tip.style.top  = `${y}px`;
+    tip.classList.add('show');
+  };
+  const hide = () => tip.classList.remove('show');
+
+  function bindHandlers() {
+    // Delegação de eventos para paths com classe .state (recriados pelo updateMap)
+    svg.querySelectorAll('path.state').forEach(pathEl => {
+      pathEl.addEventListener('mouseenter', onEnter);
+      pathEl.addEventListener('mousemove', onMove);
+      pathEl.addEventListener('mouseleave', onLeave);
+    });
+  }
+
+  function getUFAndValue(target) {
+    // Usa o dado vinculado pelo D3 (feature do GeoJSON) para pegar a sigla
+    const datum = d3.select(target).datum?.();
+    const sigla = datum?.properties?.sigla || '';
+    if (!sigla) return { uf: '', val: 0 };
+
+    // Procura o label correspondente: "UF (123)"
+    const label = [...svg.querySelectorAll('text.state-label')]
+      .find(t => t.textContent.trim().startsWith(sigla + ' '));
+    if (!label) return { uf: sigla, val: 0 };
+
+    const m = label.textContent.match(/\((\d+)\)/);
+    const val = m ? parseInt(m[1], 10) : 0;
+    return { uf: sigla, val };
+  }
+
+  function onEnter(e) {
+    const { uf, val } = getUFAndValue(e.currentTarget);
+    if (!uf) return;
+    show(e.clientX, e.clientY, uf, val);
+  }
+  function onMove(e) {
+    // Atualiza posição em tempo real
+    const { uf, val } = getUFAndValue(e.currentTarget);
+    if (!uf) return;
+    tip.style.left = `${e.clientX}px`;
+    tip.style.top  = `${e.clientY}px`;
+  }
+  function onLeave() { hide(); }
+
+  // Observa o SVG: quando o updateMap redesenhar, reanexamos handlers
+  const obs = new MutationObserver(() => bindHandlers());
+  obs.observe(svg, { childList: true, subtree: true });
+
+  // primeira vinculação
+  bindHandlers();
+})();
+
+/* ===== Confete leve em marcos de produção (50/100/150...) ===== */
+(function () {
+  const el = document.querySelector('#total-envios');
+  if (!el) return;
+
+  const STEP = 50;   // tamanho do marco (ajuste se quiser 25, 100, etc.)
+  let lastValue = getInt(el.textContent);
+  let lastMilestone = Math.floor(lastValue / STEP);
+
+  // Observa mudanças visuais (Compatível com o Motion Kit v2)
+  const obs = new MutationObserver(() => {
+    const current = getInt(el.textContent);
+    if (!Number.isFinite(current)) return;
+
+    const thisMilestone = Math.floor(current / STEP);
+    // Dispara apenas quando cruzar um novo marco pra cima
+    if (thisMilestone > lastMilestone) {
+      fireConfetti(1600); // 1.6s
+      lastMilestone = thisMilestone;
+    }
+    lastValue = current;
+  });
+  obs.observe(el, { childList: true, characterData: true, subtree: true });
+
+  function getInt(txt) {
+    const num = parseInt(String(txt).replace(/[^\d-]/g, ''), 10);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function fireConfetti(ms = 1600) {
+    const cvs = document.createElement('canvas');
+    Object.assign(cvs.style, {
+      position: 'fixed', inset: '0', width: '100vw', height: '100vh',
+      pointerEvents: 'none', zIndex: 9998
+    });
+    document.body.appendChild(cvs);
+    const ctx = cvs.getContext('2d');
+
+    const W = window.innerWidth, H = window.innerHeight;
+    cvs.width = W; cvs.height = H;
+
+    const N = Math.min(180, Math.floor(W * H / 12000));
+    const colors = ['#f0c44c', '#4caf50', '#03a9f4', '#e91e63', '#ff9800'];
+    const parts = Array.from({ length: N }, () => ({
+      x: Math.random() * W,
+      y: -20 - Math.random() * 40,
+      r: 3 + Math.random() * 4,
+      c: colors[Math.floor(Math.random() * colors.length)],
+      vx: -1 + Math.random() * 2,
+      vy: 2 + Math.random() * 3,
+      vr: 0.05 + Math.random() * 0.1
+    }));
+
+    let stop = false;
+    const endAt = performance.now() + ms;
+
+    function draw(now) {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of parts) {
+        p.x += p.vx;
+        p.y += p.vy;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(now * p.vr / 1000);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
+        ctx.restore();
+      }
+      if (now < endAt && !stop) requestAnimationFrame(draw);
+      else { stop = true; cvs.remove(); }
+    }
+    requestAnimationFrame(draw);
+
+    // remove na troca de tela/resize
+    const onResize = () => { stop = true; cvs.remove(); window.removeEventListener('resize', onResize); };
+    window.addEventListener('resize', onResize);
+  }
+})();
+
+/* ===== Glow de meta batida no doughnut (Chart.js plugin) ===== */
+(function () {
+  if (!window.Chart) return;
+
+  const progressGlowPlugin = {
+    id: 'progressGlowPlugin',
+    afterDatasetsDraw(chart, args, pluginOptions) {
+      // Aplica apenas se for doughnut e existir dataset
+      if (chart.config.type !== 'doughnut') return;
+      const ds = chart.data?.datasets?.[0];
+      if (!ds || !Array.isArray(ds.data) || ds.data.length < 2) return;
+
+      const concluidos = Number(ds.data[0]) || 0;
+      const pendentes  = Number(ds.data[1]) || 0;
+      const total = concluidos + pendentes;
+      if (total <= 0) return;
+
+      const pct = (concluidos / total) * 100;
+      if (pct < 90) return; // só brilha >=90%
+
+      const { ctx, chartArea } = chart;
+      const cx = (chartArea.left + chartArea.right) / 2;
+      const cy = (chartArea.top  + chartArea.bottom) / 2;
+      const rOuter = Math.min(chartArea.width, chartArea.height) / 2;
+
+      ctx.save();
+      ctx.beginPath();
+      const grad = ctx.createRadialGradient(cx, cy, rOuter * 0.6, cx, cy, rOuter * 1.05);
+      grad.addColorStop(0, 'rgba(240,196,76,0.00)');
+      grad.addColorStop(1, 'rgba(240,196,76,0.25)');
+      ctx.fillStyle = grad;
+      ctx.arc(cx, cy, rOuter * 1.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+
+  Chart.register(progressGlowPlugin);
+})();
+//comentario para atualização
