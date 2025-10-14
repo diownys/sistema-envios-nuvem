@@ -6,8 +6,11 @@
   <title>Vendas Concluídas</title>
   <style>
     body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
-    .header { margin-bottom: 2rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
+    .header { margin-bottom: 1rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
     h1 { color: #333; }
+    /* NOVO: Estilos para o campo de busca (copiado de vendas.html) */
+    .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .controls input { flex-grow: 1; padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
     .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
@@ -22,6 +25,11 @@
     <a href="/index.html">&larr; Voltar ao Menu</a>
     <h1>Vendas Concluídas</h1>
   </div>
+
+  <div class="controls">
+    <input type="text" id="search-input" placeholder="Busque por cliente ou cód. venda...">
+  </div>
+
   <div class="table-container">
     <table>
       <thead><tr><th>Cliente</th><th>Cód. Venda</th><th>Volumes</th><th>Confirmado em</th><th>Ações</th></tr></thead>
@@ -31,8 +39,8 @@
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
@@ -42,16 +50,30 @@
     document.addEventListener('DOMContentLoaded', async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = '/login.html'; return; }
+        
         await carregarConcluidos();
+        
+        // NOVO: Adiciona o "ouvinte" para o campo de busca
+        const searchInput = document.getElementById('search-input');
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const vendasFiltradas = concluidosData.filter(venda => 
+                (venda.cliente_nome?.toLowerCase().includes(query)) ||
+                (venda.codigo_venda?.toLowerCase().includes(query))
+            );
+            // Re-renderiza a tabela apenas com os dados filtrados
+            renderTable(vendasFiltradas); 
+        });
     });
     
-    function renderTable() {
+    // ATUALIZADO: A função agora aceita um parâmetro para saber quais dados renderizar
+    function renderTable(dadosParaRenderizar = concluidosData) {
         tableBody.innerHTML = '';
-        if (concluidosData.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda concluída encontrada.</td></tr>';
+        if (dadosParaRenderizar.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda encontrada para o filtro atual.</td></tr>';
             return;
         }
-        concluidosData.forEach(venda => {
+        dadosParaRenderizar.forEach(venda => {
             tableBody.innerHTML += `
                 <tr>
                     <td>${venda.cliente_nome || 'N/A'}</td>
@@ -73,7 +95,7 @@
             const { data, error } = await supabase.functions.invoke('get-concluidos');
             if (error) throw error;
             concluidosData = data.concluidos;
-            renderTable();
+            renderTable(); // Renderiza a tabela completa na primeira carga
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
         }
@@ -92,7 +114,8 @@
                     target.textContent = 'Reverter';
                 } else {
                     concluidosData = concluidosData.filter(v => v.id != vendaId);
-                    renderTable();
+                    // Dispara um novo evento de input para re-filtrar a lista visível
+                    document.getElementById('search-input').dispatchEvent(new Event('input'));
                 }
             }
         }
@@ -100,7 +123,6 @@
         if (target.matches('.btn-reprint')) {
             target.textContent = 'Gerando...';
             try {
-                // A função `gerar-etiqueta` já existe e faz exatamente o que precisamos!
                 const { data: htmlString, error } = await supabase.functions.invoke('gerar-etiqueta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
                 if (error) throw error;
                 const printWindow = window.open('', '_blank');
