@@ -1,24 +1,22 @@
 /* --- CONFIGURAÇÕES GERAIS E VARIÁVEIS --- */
 :root {
-    /* Variáveis do primeiro código (estrutura) */
     --font-size-base: clamp(12px, 0.9vw, 16px);
     --padding-widget: 15px;
     --gap-geral: 20px;
 
-    /* Variáveis do segundo código (estilo e tema) - Adotando tema escuro */
     --bg-color: #1E1E1E;
     --card-bg: #2D2D2D;
     --text-color: #E0E0E0;
-    --highlight-color: #f0c44c; /* Amarelo/Dourado (mantido) */
+    --highlight-color: #f0c44c;
     --secondary-text: #A0A0A0;
     --danger-color: #d63031;
     --info-color: #273c75;
 
-    /* Novas variáveis para scroller/cards (Baseado no 2º código, mas adaptado ao tema escuro) */
     --scroller-card-bg: #3A3A3A;
     --scroller-card-text: var(--text-color);
 }
 
+/* --- RESET E BASE --- */
 html, body {
     margin: 0;
     padding: 0;
@@ -27,7 +25,6 @@ html, body {
     overflow: hidden;
     background-color: var(--bg-color);
     color: var(--text-color);
-    /* Adotando a fonte 'Roboto' do primeiro HTML, pois é mais comum que 'Inter' */
     font-family: 'Roboto', sans-serif;
     box-sizing: border-box;
 }
@@ -48,14 +45,11 @@ h2 {
     font-weight: 600;
     flex-shrink: 0;
     color: var(--highlight-color);
-    /* Melhoria: Estilo flex do 2º código para alinhar ícone com texto */
     display: flex;
     align-items: center;
     gap: 0.75rem;
 }
-h2 .fas {
-    color: var(--highlight-color); /* Garante que o ícone tenha a cor de destaque */
-}
+h2 .fas { color: var(--highlight-color); }
 
 ul { list-style: none; padding: 0; margin: 0; }
 li { padding-bottom: 8px; font-size: 0.95em; }
@@ -73,9 +67,9 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     display: flex;
     flex-direction: column;
     gap: var(--gap-geral);
-    overflow-y: auto;  /* ✅ permite rolagem interna se necessário */
-    overflow-x: hidden; /* mantém o layout limpo */
-    min-height: 0;      /* ✅ importante para o flex respeitar altura */
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
 }
 
 .widget {
@@ -86,175 +80,123 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     display: flex;
     flex-direction: column;
     min-height: 0;
-    transition: transform 200ms ease, box-shadow 200ms ease; /* Mantido do 1º código */
+    transition: transform 200ms ease, box-shadow 200ms ease;
 }
 .widget:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0,0,0,0.25);
 }
 
-/* Classe para conteúdo com rolagem */
 .scrollable-content {
     overflow-y: auto;
     flex-grow: 1;
 }
 
-/* --- SCROLLBAR CUSTOMIZADO (Mantido do 1º código) --- */
+/* --- SCROLLBAR CUSTOMIZADO --- */
 .scrollable-content::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--card-bg); }
 ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #777; }
 
-/* ------------------------------------- */
-/* --- MELHORIAS DO SEGUNDO CÓDIGO: CABEÇALHO --- */
-/* ------------------------------------- */
-
-/* O 'dashboard-header' foi introduzido no HTML mesclado */
+/* --- DASHBOARD HEADER --- */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0; /* Remove padding extra pois já tem no <body> */
+    padding: 0;
     margin-bottom: var(--gap-geral);
-    border-bottom: 1px solid #333; /* Adaptado ao tema escuro */
+    border-bottom: 1px solid #333;
     flex-shrink: 0;
 }
 
-.logo-container { /* Reutiliza o container da logo */
-    text-align: left;
-    flex-shrink: 0;
-}
-.logo-container img {
-    max-height: 50px; /* Logo diminuída */
-}
+.logo-container { text-align: left; flex-shrink: 0; }
+.logo-container img { max-height: 50px; }
 
 .header-info {
     display: flex;
     align-items: center;
-    gap: 2.5rem; /* Aumenta um pouco o espaçamento */
+    gap: 2.5rem;
     font-size: 1rem;
     color: var(--secondary-text);
 }
 
-#date-time {
-    /* Combina o estilo dos antigos clock e date */
-    display: flex;
-    flex-direction: column;
-    text-align: right;
-}
+#date-time { display: flex; flex-direction: column; text-align: right; }
 #time { font-size: 2.5em; font-weight: 700; color: var(--text-color); }
 #date { font-size: 0.9em; text-transform: capitalize; }
 
-
-/* Substitui o antigo weather-widget por um estilo inline mais compacto */
-#weather {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
+#weather { display: flex; align-items: center; gap: 0.5rem; }
 #weather img { width: 30px; height: 30px; }
-#temperature { 
-    font-size: 1.5em; 
-    font-weight: 700; 
-    margin: 0; 
-    color: var(--highlight-color);
-}
-#city-name { display: none; } /* Oculta a cidade no header compacto */
+#temperature { font-size: 1.5em; font-weight: 700; margin: 0; color: var(--highlight-color); }
+#city-name { display: none; }
 
-/* ------------------------------------- */
-/* --- MELHORIAS DO SEGUNDO CÓDIGO: SCROLLER (ANIVERSÁRIOS/RECONHECIMENTO) --- */
-/* ------------------------------------- */
-
-.birthday-widget, .recognition-widget { flex-grow: 1; }
-
-/* O .scrollable-content agora também precisa se comportar como o scroller-wrapper */
-.birthday-widget .scrollable-content, 
-.recognition-widget .scrollable-content {
-    /* Efeito de fade nas laterais para suavizar a entrada/saída */
-    /* Adaptado ao tema escuro */
-    -webkit-mask: linear-gradient(90deg, transparent, var(--card-bg) 10%, var(--card-bg) 90%, transparent);
-    mask: linear-gradient(90deg, transparent, var(--card-bg) 10%, var(--card-bg) 90%, transparent);
-    
-    /* Remove a rolagem vertical padrão, que será substituída pelo scroller horizontal */
-    overflow-y: hidden; 
-    overflow-x: hidden; /* O scroller-inner terá o overflow */
-    padding-bottom: 10px; /* Espaço para a rolagem visual */
+/* --- SCROLLER VERTICAL TIPO MURAL --- */
+.mural {
+    height: 120px;
+    overflow: hidden;
+    position: relative;
 }
 
-/* Scroller interno (agora dentro do .scrollable-content) */
-.scroller-inner {
-    display: flex;
-    gap: 1rem;
-    width: max-content; /* Garante que os itens não quebrem a linha */
-}
-
-/* Animação do Scroller (movida para o scroller-inner) */
-/* OBS: A classe [data-animated="true"] DEVE ser adicionada via JavaScript */
-.scrollable-content[data-animated="true"] .scroller-inner {
-    animation: scroll 40s linear infinite;
-}
-
-@keyframes scroll {
-    to { transform: translateX(-50%); }
-}
-
-
-/* ESTILO DOS CARDS DE ANIVERSARIANTES */
-.birthday-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background-color: var(--scroller-card-bg); /* Fundo mais claro para contraste */
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    color: var(--scroller-card-text);
-    
-    /* Largura base para mostrar ~3 itens, ajustada ao gap */
-    flex-basis: 300px;
-    flex-shrink: 0;
-}
-
-.birthday-card img {
-    width: 50px; /* Levemente reduzido */
-    height: 50px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.birthday-card p {
+.mural ul {
+    list-style: none;
+    padding: 0;
     margin: 0;
-    line-height: 1.3;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    animation: scrollVertical 10s linear infinite;
 }
-.birthday-card strong { color: var(--highlight-color); }
 
+.mural ul:hover {
+    animation-play-state: paused;
+}
 
-/* ESTILO DOS CARDS DE RECONHECIMENTO */
-.recognition-card {
+.mural li {
     background-color: var(--scroller-card-bg);
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    font-style: italic;
+    padding: 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--scroller-card-text);
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.mural li:hover {
+    background-color: var(--highlight-color);
+    transform: scale(1.02);
+}
+
+@keyframes scrollVertical {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+}
+
+.birthday-widget .mural,
+.recognition-widget .mural {
+    flex-grow: 1;
+}
+
+.birthday-widget .mural li,
+.recognition-widget .mural li {
+    background-color: var(--scroller-card-bg);
     color: var(--scroller-card-text);
     border-left: 4px solid var(--highlight-color);
-    
-    /* Largura base para mostrar ~4 itens, ajustada ao gap */
-    flex-basis: 240px;
+}
+
+/* --- CARDS HORIZONTAIS (fallback) --- */
+.birthday-card, .recognition-card {
+    flex-basis: auto;
     flex-shrink: 0;
 }
 
-/* Remove estilos antigos que não se aplicam aos novos cards de lista */
-.birthday-widget li,
-.recognition-item { display: none; } 
-/* Os cartões do scroller vão substituir estas listas. */
+/* --- ROLAGEM PAUSA NO HOVER --- */
+.birthday-widget .mural:hover ul,
+.recognition-widget .mural:hover ul {
+    animation-play-state: paused;
+}
 
-
-/* ------------------------------------- */
-/* --- COLUNA CENTRAL (Mantido do 1º código) --- */
-/* ------------------------------------- */
-
+/* --- COLUNA CENTRAL --- */
 .janela-stats-widget-horizontal { flex-shrink: 0; }
 #janela-stats-blocks {
     display: flex;
@@ -271,63 +213,34 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     min-width: 100px;
     transition: transform 200ms ease, box-shadow 200ms ease;
 }
-.janela-block:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-}
+.janela-block:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
 .janela-block-name { font-size: 0.8em; color: var(--secondary-text); margin-bottom: 5px; }
 .janela-block-value { font-weight: 700; color: var(--text-color); }
 
-.map-widget {
-    flex-grow: 1;
-    flex-shrink: 0;
-    min-height: 250px;
-    max-height: 45vh;
-}
+.map-widget { flex-grow: 1; flex-shrink: 0; min-height: 250px; max-height: 45vh; }
 #map-container { position: relative; flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
 #brazil-map-svg { max-width: 100%; max-height: 100%; }
 .state-label { font-size: 10px; fill: #fff; text-anchor: middle; pointer-events: none; text-shadow: -1px 0 #000, 0 1px #000, 1px 0 #000, 0 -1px #000; }
 .legend { flex-shrink: 0; display: flex; gap: 15px; align-items: center; justify-content: center; margin-top: 10px; font-size: 0.8em; }
 .swatch { width: 18px; height: 12px; border: 1px solid #555; display: inline-block; margin-right: 5px; }
 
-
-/* Progresso Geral (mantido) */
 .progress-widget { align-items: center; flex-shrink: 0; }
-#progress-chart-container {
-    position: relative;
-    height: 200px;
-    width: 200px;
-    margin-bottom: 10px;
-}
+#progress-chart-container { position: relative; height: 200px; width: 200px; margin-bottom: 10px; }
 #progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
 #progress-percent { font-size: 1.8em; font-weight: bold; }
 #progress-details { font-size: 0.7em; color: var(--secondary-text); }
 
-
-/* Totais (mantido) */
-.totals-widget { 
-    flex-direction: row; justify-content: space-around; text-align: center; 
-    background-color: #2a2a2a; flex-shrink: 0; 
-}
+.totals-widget { flex-direction: row; justify-content: space-around; text-align: center; background-color: #2a2a2a; flex-shrink: 0; }
 .total-item { display: flex; flex-direction: column; }
 .total-label { font-size: 0.9em; color: var(--secondary-text); margin-bottom: 5px; }
 .total-value { font-size: 2em; font-weight: 700; color: var(--highlight-color); }
 
-/* ------------------------------------- */
-/* --- COLUNA DIREITA (Mantido do 1º código) --- */
-/* ------------------------------------- */
-
-/* Alerta */
+/* --- COLUNA DIREITA --- */
 .alert-widget { text-align: center; transition: background-color 0.5s; background-color: var(--info-color); flex-shrink: 0; }
 .alert-widget h2 { color: #fff; border: none; }
 .alert-value { font-size: 3em; font-weight: 700; color: #fff; }
 
-/* Ocorrências */
-.occurrences-widget {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
+.occurrences-widget { flex-grow: 1; display: flex; flex-direction: column; }
 .occurrences-widget .chart-container {
     height: 180px;
     overflow-y: auto;
@@ -339,14 +252,8 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 .occurrences-widget .chart-container canvas { height: 100% !important; }
 .occurrences-widget .chart-container::-webkit-scrollbar { width: 6px; }
 .occurrences-widget .chart-container::-webkit-scrollbar-track { background: #222; }
-.occurrences-widget .chart-container::-webkit-scrollbar-thumb {
-    background-color: var(--highlight-color);
-    border-radius: 3px;
-    border: 1px solid #222;
-}
+.occurrences-widget .chart-container::-webkit-scrollbar-thumb { background-color: var(--highlight-color); border-radius: 3px; border: 1px solid #222; }
 
-
-/* Contagem Regressiva (Mantido) */
 .countdown-item {
     background-color: var(--bg-color);
     border-radius: 0.5rem;
@@ -358,43 +265,15 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     border: 1px solid transparent;
     transition: border-color 0.3s, box-shadow 0.3s;
 }
-.countdown-item:hover {
-    border-color: var(--highlight-color);
-    box-shadow: 0 0 15px rgba(240, 196, 76, 0.3);
-}
-.countdown-item.imminent {
-    background-color: #4a2c00;
-    border: 2px solid var(--danger-color);
-    animation: pulse-border 1.5s infinite, heartbeat 2.4s ease-in-out infinite;
-}
-.countdown-item.finished {
-    background-color: #1a1a1a;
-    color: #555;
-    border: 1px dashed #555;
-    opacity: 0.6;
-    text-decoration: line-through;
-}
-.countdown-item .carrier {
-    font-weight: 600;
-    color: var(--highlight-color);
-}
-.countdown-item .timer {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-color);
-}
-.countdown-item.finished .timer {
-    color: #555;
-}
-.countdown.soon {
-    color: var(--danger-color);
-    animation: blink 1s infinite;
-}
+.countdown-item:hover { border-color: var(--highlight-color); box-shadow: 0 0 15px rgba(240,196,76,0.3); }
+.countdown-item.imminent { background-color: #4a2c00; border: 2px solid var(--danger-color); animation: pulse-border 1.5s infinite, heartbeat 2.4s ease-in-out infinite; }
+.countdown-item.finished { background-color: #1a1a1a; color: #555; border: 1px dashed #555; opacity: 0.6; text-decoration: line-through; }
+.countdown-item .carrier { font-weight: 600; color: var(--highlight-color); }
+.countdown-item .timer { font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
+.countdown-item.finished .timer { color: #555; }
+.countdown.soon { color: var(--danger-color); animation: blink 1s infinite; }
 
-
-/* ------------------------------------- */
-/* --- RODAPÉ (Mantido do 1º código) --- */
-/* ------------------------------------- */
+/* --- RODAPÉ --- */
 .news-ticker-container {
     position: relative;
     width: calc(100% + var(--gap-geral) * 2);
@@ -414,73 +293,37 @@ li { padding-bottom: 8px; font-size: 0.95em; }
 }
 .news-ticker p { margin: 0; font-size: 1em; }
 
-
-/* ------------------------------------- */
-/* --- ANIMAÇÕES E OTILIZAÇÕES (Mantido do 1º código) --- */
-/* ------------------------------------- */
+/* --- ANIMAÇÕES --- */
 @keyframes blink { 50% { opacity: 0; } }
-@keyframes pulse-border {
-    0% { border-color: var(--danger-color); }
-    50% { border-color: rgba(214, 48, 49, 0.5); }
-    100% { border-color: var(--danger-color); }
-}
+@keyframes pulse-border { 0% { border-color: var(--danger-color); } 50% { border-color: rgba(214,48,49,0.5); } 100% { border-color: var(--danger-color); } }
 @keyframes ticker-scroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-100%); } }
-@keyframes heartbeat {
-    0%, 100% { transform: scale(1); }
-    20% { transform: scale(1.015); }
-    40% { transform: scale(1); }
-    60% { transform: scale(1.015); }
-    80% { transform: scale(1); }
-}
+@keyframes heartbeat { 0%,100% { transform: scale(1); } 20% { transform: scale(1.015); } 40% { transform: scale(1); } 60% { transform: scale(1.015); } 80% { transform: scale(1); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideFadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+@keyframes alertGlow { 0%,100% { box-shadow: 0 0 0 rgba(214,48,49,0.0); } 50% { box-shadow: 0 0 24px rgba(214,48,49,0.40); } }
+@keyframes shimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
+@keyframes flash { 0% { color: var(--highlight-color); text-shadow: 0 0 10px rgba(240,196,76,0.25); } 100% { color: inherit; text-shadow: none; } }
 
-/* Entrada suave dos widgets ao carregar */
+/* Entrada suave widgets */
 body:not(.motion-ready) .widget { opacity: 0; transform: translateY(6px); }
 body.motion-ready .widget { animation: fadeUp 460ms ease-out both; }
-@keyframes fadeUp {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
 .column-left .widget:nth-child(2) { animation-delay: 60ms; }
 .column-left .widget:nth-child(3) { animation-delay: 120ms; }
 .column-center .widget:nth-child(2) { animation-delay: 60ms; }
 .column-right .widget:nth-child(2) { animation-delay: 60ms; }
 .column-right .widget:nth-child(3) { animation-delay: 120ms; }
 
-/* Mapa do Brasil – transições e hover */
+/* Mapa do Brasil */
 #brazil-map-svg .state { transition: fill 450ms ease, stroke 450ms ease, filter 450ms ease; }
-#brazil-map-svg .state:hover {
-    stroke: var(--highlight-color);
-    stroke-width: 1.2;
-    filter: drop-shadow(0 0 6px rgba(240,196,76,0.25));
-}
+#brazil-map-svg .state:hover { stroke: var(--highlight-color); stroke-width: 1.2; filter: drop-shadow(0 0 6px rgba(240,196,76,0.25)); }
 #brazil-map-svg .state-label { opacity: 0.9; transition: opacity 300ms ease; }
 #map-container:hover .state-label { opacity: 1; }
 
-/* Reconhecimentos entram com slide + fade (aplicado nos cards do scroller) */
 .recognition-card { animation: slideFadeIn 420ms ease-out both; }
-@keyframes slideFadeIn {
-    from { opacity:0; transform: translateY(6px); }
-    to { opacity:1; transform: translateY(0); }
-}
-
-/* Alerta de refrigerados – pulsa só quando a API pintou de vermelho (#d63031) */
 .alert-widget[style*="#d63031"] { animation: alertGlow 1.1s ease-in-out infinite; }
-@keyframes alertGlow {
-    0%, 100% { box-shadow: 0 0 0 rgba(214,48,49,0.0); }
-    50% { box-shadow: 0 0 24px rgba(214,48,49,0.40); }
-}
-
-/* Ticker de notícias – pausa no hover */
 .news-ticker-container:hover .news-ticker { animation-play-state: paused; }
-
-/* Realce rápido quando um número é atualizado via JS */
 .countup-flash { animation: flash 500ms ease-out; }
-@keyframes flash {
-    0% { color: var(--highlight-color); text-shadow: 0 0 10px rgba(240,196,76,0.25); }
-    100% { color: inherit; text-shadow: none; }
-}
 
-/* Acessibilidade: respeitar “reduzir movimento” do sistema */
 @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
 }
@@ -488,19 +331,13 @@ body.motion-ready .widget { animation: fadeUp 460ms ease-out both; }
 /* Focus Cycle */
 body.focus-left .column-left,
 body.focus-center .column-center,
-body.focus-right .column-right {
-    transform: scale(1.01);
-    transition: transform 300ms ease, filter 300ms ease, opacity 300ms ease;
-}
+body.focus-right .column-right { transform: scale(1.01); transition: transform 300ms ease, filter 300ms ease, opacity 300ms ease; }
 body.focus-left .column-center,
 body.focus-left .column-right,
 body.focus-center .column-left,
 body.focus-center .column-right,
 body.focus-right .column-left,
-body.focus-right .column-center {
-    opacity: .9;
-    filter: saturate(.9) contrast(.98);
-}
+body.focus-right .column-center { opacity: .9; filter: saturate(.9) contrast(.98); }
 
 /* Skeleton do mapa */
 #map-container:has(#brazil-map-svg:empty)::after {
@@ -511,10 +348,6 @@ body.focus-right .column-center {
     background: linear-gradient(90deg, #2a2a2a 0%, #333 50%, #2a2a2a 100%);
     background-size: 200% 100%;
     animation: shimmer 1.1s linear infinite;
-}
-@keyframes shimmer {
-    0% { background-position: 0% 0; }
-    100% { background-position: 200% 0; }
 }
 
 /* Tooltip do mapa */
