@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,26 +11,34 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <header class="dashboard-header">
-    <div class="logo-container">
-      <img src="./drogavet_neuvye.png" alt="Logo">
+  <!-- TOPO: Logo (esquerda) | Temperatura + Relógio (direita, lado a lado) -->
+  <header class="dashboard-header" role="banner" aria-label="Cabeçalho do dashboard">
+    <div class="header-left logo-container">
+      <img src="./drogavet_neuvye.png" alt="Logo" class="logo-img">
     </div>
-    <div class="header-info">
-      <div id="weather">
-        <img id="weather-icon" alt=""/>
-        <div>
-          <div id="temperature">--°C</div>
-          <small id="description">Carregando clima...</small>
+
+    <div class="header-right">
+      <!-- Temperatura compacta -->
+      <section class="widget widget--sm weather-widget" aria-label="Clima">
+        <div class="weather-body top-compact">
+          <img id="weather-icon" alt="Clima" width="48" height="48"/>
+          <div class="weather-numbers">
+            <div id="temperature">--°C</div>
+            <small id="description">...</small>
+          </div>
         </div>
-      </div>
-      <div id="date-time">
-        <div id="time"><span id="clock">--:--:--</span></div>
-        <div id="date">&nbsp;</div>
-      </div>
+      </section>
+      <!-- Relógio compacto -->
+      <section class="widget widget--sm clock-widget" aria-label="Relógio">
+        <div class="clock-numbers">
+          <div id="time"><span id="clock">--:--:--</span></div>
+          <small id="date">&nbsp;</small>
+        </div>
+      </section>
     </div>
   </header>
 
-  <main class="dashboard-grid">
+  <main class="dashboard-grid" role="main">
     <section class="column-left">
       <div class="widget birthday-widget">
         <h2>🎂 Aniversariantes do Mês</h2>
@@ -52,12 +60,12 @@
         <div id="janela-stats-blocks"></div>
       </div>
 
-      <div class="widget map-widget">
+      <div class="widget map-widget map-widget--large">
         <h2>🗺️ Envios Concluídos por UF</h2>
         <div id="map-container">
-          <svg id="brazil-map-svg"></svg>
+          <svg id="brazil-map-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Mapa do Brasil"></svg>
         </div>
-        <div class="legend">
+        <div class="legend" aria-label="Legenda do mapa">
           <span><span class="swatch" style="background:#333"></span>Baixo</span>
           <span><span class="swatch" style="background:#706b5a"></span>Médio</span>
           <span><span class="swatch" style="background:#A2946A"></span>Alto</span>
@@ -97,6 +105,7 @@
         <h2>📈 Top 3 Ocorrências Internas</h2>
         <div class="chart-container"><canvas id="internas-chart"></canvas></div>
       </div>
+
       <div class="widget occurrences-widget">
         <h2>📈 Top 3 Ocorrências Externas</h2>
         <div class="chart-container"><canvas id="externas-chart"></canvas></div>
@@ -109,7 +118,7 @@
     </section>
   </main>
 
-  <footer class="news-ticker-container">
+  <footer class="news-ticker-container" role="contentinfo" aria-label="Comunicados">
     <div class="news-ticker"><p id="news-content">Carregando comunicados...</p></div>
   </footer>
 
