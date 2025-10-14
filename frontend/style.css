@@ -73,7 +73,9 @@ li { padding-bottom: 8px; font-size: 0.95em; }
     display: flex;
     flex-direction: column;
     gap: var(--gap-geral);
-    overflow: hidden;
+    overflow-y: auto;  /* ✅ permite rolagem interna se necessário */
+    overflow-x: hidden; /* mantém o layout limpo */
+    min-height: 0;      /* ✅ importante para o flex respeitar altura */
 }
 
 .widget {
