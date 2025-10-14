@@ -45,7 +45,16 @@
 
     <div class="table-container">
         <table>
-            <thead><tr><th>Cliente</th><th>Cód. Venda</th><th>Volumes</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>UF</th>
+                    <th>Cód. Venda</th>
+                    <th>Volumes</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
             <tbody id="vendas-table-body"></tbody>
         </table>
     </div>
@@ -68,7 +77,7 @@
 
 <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    // Chaves Supabase mantidas do primeiro código
+    // Chaves Supabase mantidas
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
 
@@ -87,40 +96,42 @@
 
         const params = new URLSearchParams(window.location.search);
         janelaColeta = params.get('janela');
-        const dataString = params.get('data'); // NOVO: Pega a data da URL
+        const dataString = params.get('data'); 
         
         if (!janelaColeta || !dataString) { 
             document.getElementById('titulo-janela').textContent = "Erro: Parâmetros (Janela ou Data) não especificados."; 
             return; 
         }
         
-        // NOVO: Cálculo das datas de início e fim do dia
+        // Cálculo das datas de início e fim do dia (Mantido do primeiro)
         const [year, month, day] = dataString.split('-').map(Number);
         const selectedDate = new Date(year, month - 1, day);
         const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
         const endOfDay = new Date(startOfDay);
         endOfDay.setDate(endOfDay.getDate() + 1);
 
-        // NOVO: Atualiza o título para incluir a data
+        // Atualiza o título para incluir a data (Mantido do primeiro)
         document.getElementById('titulo-janela').textContent = `Vendas de ${selectedDate.toLocaleDateString('pt-BR')} - Janela: ${janelaColeta}`;
         
         setupEventListeners();
         
-        // NOVO: Chama a função com os três parâmetros
+        // Chama a função com os três parâmetros (Mantido do primeiro)
         await carregarVendas(janelaColeta, startOfDay.toISOString(), endOfDay.toISOString());
     });
 
     function renderTable(vendasParaRenderizar) {
         const tableBody = document.getElementById('vendas-table-body');
         tableBody.innerHTML = '';
+        // Colspan atualizado para 6, para incluir a nova coluna UF
         if (vendasParaRenderizar.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda encontrada para o filtro atual.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
             return;
         }
         vendasParaRenderizar.forEach(venda => {
             tableBody.innerHTML += `
                 <tr id="venda-row-${venda.id}">
                     <td>${venda.cliente_nome || 'N/A'}</td>
+                    <td>${venda.uf || 'N/A'}</td> 
                     <td>${venda.codigo_venda || 'N/A'}</td>
                     <td>${venda.volumes || '1'}</td>
                     <td>${venda.status || 'Pendente'}</td>
@@ -136,29 +147,30 @@
         });
     }
 
-    // Função de carregamento AGORA aceita os parâmetros de data (Atualizada)
+    // Função de carregamento AGORA aceita os parâmetros de data (Mantida do primeiro)
     async function carregarVendas(janela, startDate, endDate) {
         const tableBody = document.getElementById('vendas-table-body');
-        tableBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
+        // Colspan atualizado para 6
+        tableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; 
         try {
-            // Chamada à Edge Function com os 3 parâmetros (Atualizada)
+            // Chamada à Edge Function com os 3 parâmetros (Mantida do primeiro)
             const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
                 body: { 
                     janela: janela,
-                    start_date: startDate, // NOVO
-                    end_date: endDate     // NOVO
+                    start_date: startDate, 
+                    end_date: endDate 
                 } 
             });
             if (error) throw error;
             todasAsVendas = data.vendas;
             renderTable(todasAsVendas);
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
+            // Colspan atualizado para 6
+            tableBody.innerHTML = `<tr><td colspan="6">Erro ao carregar vendas: ${error.message}</td></tr>`; 
         }
     }
 
-    // A função setupEventListeners e toda a lógica de busca, QR code e modal de confirmação
-    // foi mantida INTACTA do primeiro código para garantir que nada se perca.
+    // A função setupEventListeners e toda a lógica de busca, QR code e modal de confirmação foi mantida.
     function setupEventListeners() {
         const searchInput = document.getElementById('search-input');
         const tableBody = document.getElementById('vendas-table-body');
