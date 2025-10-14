@@ -540,7 +540,7 @@ window.addEventListener('load', () => {
 
   function formatValue(value, mode) {
     if (mode === 'currency') {
-      return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
     }
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   }

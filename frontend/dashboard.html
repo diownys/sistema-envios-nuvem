@@ -1,60 +1,59 @@
-<!doctype html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Corporativo - ATLAS S.A</title>
-  <link rel="icon" href="favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./style.css" />
+  <title>Dashboard Corporativo — ATLAS S.A</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>.clock-widget #time, .clock-widget #clock { font-size: 2.5em; font-weight: 700; }</style>
 </head>
 <body>
-  <header class="dashboard-header">
-    <div class="logo-container">
-      <img src="./drogavet_neuvye.png" alt="Logo">
-    </div>
-    <div class="header-info">
-      <div id="weather">
-        <img id="weather-icon" alt=""/>
-        <div>
-          <div id="temperature">--°C</div>
-          <small id="description">Carregando clima...</small>
+  <div class="dashboard-grid">
+    <div class="column-left">
+      <section class="widget logo-container">
+        <h2>Dashboard Corporativo — ATLAS S.A</h2>
+        <div>Logo</div>
+      </section>
+      <section class="widget clock-widget">
+        <div id="clock">--:--:--</div>
+        <div id="date">Carregando data...</div>
+      </section>
+      <section class="widget weather-widget">
+        <div class="weather-header">
+          <h2>☁️ Clima</h2>
+          <span id="city-name">--</span>
         </div>
-      </div>
-      <div id="date-time">
-        <div id="time"><span id="clock">--:--:--</span></div>
-        <div id="date">&nbsp;</div>
-      </div>
+        <div class="weather-body">
+          <img id="weather-icon" alt="Ícone do clima" width="80" height="80" />
+          <p id="temperature">--°C</p>
+          <p id="description">Carregando clima...</p>
+        </div>
+      </section>
+      <section class="widget birthday-widget">
+        <h2>🎂 Aniversariantes do Mês</h2>
+        <div class="scrollable-content">
+          <ul id="birthday-list">
+            <li>Carregando...</li>
+          </ul>
+        </div>
+      </section>
+      <section class="widget recognition-widget">
+        <h2>🏅 Mural de Reconhecimento</h2>
+        <div class="scrollable-content" id="recognition-list">Carregando...</div>
+      </section>
     </div>
-  </header>
-
-  <main class="dashboard-grid">
-    <section class="column-left">
-<!-- Aniversariantes -->
-<div class="widget birthday-widget">
-  <h2>🎂 Aniversariantes do Mês</h2>
-  <ul id="birthday-list" class="scrollable-content"></ul>
-</div>
-
-<!-- Reconhecimento -->
-<div class="widget recognition-widget">
-  <h2>🏅 Mural de Reconhecimento</h2>
-  <div id="recognition-list" class="scrollable-content"></div>
-</div>
-    </section>
-
-    <section class="column-center">
-      <div class="widget janela-stats-widget-horizontal">
+    <div class="column-center">
+      <section class="widget janela-stats-widget-horizontal">
         <h2>📦 Janelas de Coleta Pendentes</h2>
         <div id="janela-stats-blocks"></div>
-      </div>
-
-      <div class="widget map-widget">
+      </section>
+      <section class="widget map-widget">
         <h2>🗺️ Envios Concluídos por UF</h2>
         <div id="map-container">
-          <svg id="brazil-map-svg"></svg>
+          <svg id="brazil-map-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Mapa do Brasil"></svg>
         </div>
         <div class="legend">
           <span><span class="swatch" style="background:#333"></span>Baixo</span>
@@ -62,58 +61,52 @@
           <span><span class="swatch" style="background:#A2946A"></span>Alto</span>
           <span><span class="swatch" style="background:#f0c44c"></span>Muito Alto</span>
         </div>
-      </div>
-
-      <div class="widget totals-widget">
-        <div class="total-item">
+      </section>
+    </div>
+    <div class="column-right">
+      <section class="widget progress-widget">
+        <h2>Progresso Geral</h2>
+        <div id="progress-chart-container">
+          <canvas id="progress-chart" width="200" height="200" aria-label="Gráfico de Progresso"></canvas>
+          <div id="progress-text">
+            <div id="progress-percent">0%</div>
+            <div id="progress-details">0 de 0</div>
+          </div>
+        </div>
+      </section>
+      <section class="widget totals-widget">
+        <div>
           <div class="total-label">Concluídos Hoje</div>
           <div class="total-value" id="total-envios">0</div>
         </div>
-        <div class="total-item">
+        <div>
           <div class="total-label">Valor Expedido (R$)</div>
           <div class="total-value" id="valor-total">0,00</div>
         </div>
-        <div class="total-item">
-          <div class="total-label">Progresso Geral</div>
-          <div id="progress-chart-container">
-            <canvas id="progress-chart"></canvas>
-            <div id="progress-text">
-              <div id="progress-percent">0%</div>
-              <div id="progress-details">0 de 0</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="column-right">
-      <div class="widget alert-widget">
+      </section>
+      <section class="widget alert-widget">
         <h2>🧊 Refrigerados Pendentes</h2>
         <div class="alert-value" id="refrigerated-alert">0</div>
-      </div>
-
-      <div class="widget occurrences-widget">
+      </section>
+      <section class="widget occurrences-widget">
         <h2>📈 Top 3 Internas</h2>
         <div class="chart-container"><canvas id="internas-chart"></canvas></div>
-      </div>
-      <div class="widget occurrences-widget">
+      </section>
+      <section class="widget occurrences-widget">
         <h2>📈 Top 3 Externas</h2>
         <div class="chart-container"><canvas id="externas-chart"></canvas></div>
-      </div>
-
-      <div class="widget">
+      </section>
+      <section class="widget countdown-widget">
         <h2>⏱️ Próximas Coletas</h2>
-        <div id="countdown-container" class="scrollable-content"></div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="news-ticker-container">
+        <div id="countdown-container" class="scrollable-content">Carregando...</div>
+      </section>
+    </div>
+  </div>
+  <div class="news-ticker-container">
     <div class="news-ticker"><p id="news-content">Carregando comunicados...</p></div>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script type="module" src="./script.js"></script>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
