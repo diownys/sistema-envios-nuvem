@@ -289,3 +289,135 @@ body.focus-right .column-center { opacity: .9; filter: saturate(.9) contrast(.98
 .map-tooltip.show { opacity: 1; transform: translate(-50%, -100%); }
 .map-tooltip .tt-uf { color: var(--highlight-color); font-weight: 600; margin-right: 6px; }
 .map-tooltip .tt-val { opacity: .9; }
+
+/* ===== Topo do dashboard (logo à direita; clima + relógio à esquerda) ===== */
+.dashboard-header {
+  display: grid;
+  grid-template-columns: 1fr auto; /* esquerda (cards) | direita (logo) */
+  align-items: start;
+  gap: var(--gap-geral);
+  margin-bottom: var(--gap-geral);
+}
+
+.header-left {
+  display: flex;
+  gap: var(--gap-geral);
+  align-items: stretch;
+  min-width: 0; /* evita estourar largura */
+}
+
+.header-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.logo-img {
+  max-height: clamp(28px, 6vh, 64px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
+}
+
+/* Cartõezinhos do topo */
+.widget--sm {
+  padding: clamp(8px, 1.2vmin, 12px);
+}
+.widget--sm h2 {
+  font-size: clamp(.95rem, 1.7vmin, 1.15rem);
+  margin-bottom: clamp(4px, .6vmin, 8px);
+}
+
+/* ===== Escalas fluidas para caber sem mexer em zoom ===== */
+:root {
+  /* deixa mais compacto que o padrão */
+  --gap-geral: clamp(8px, 1.4vmin, 20px);
+  --padding-widget: clamp(8px, 1.2vmin, 15px);
+}
+
+body {
+  /* fonte base se adapta ao menor lado da tela */
+  font-size: clamp(11px, 1.25vmin, 16px);
+  font-family: 'Roboto', system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+}
+
+h2 {
+  font-size: clamp(1rem, 1.8vmin, 1.25rem);
+}
+
+/* Mapa ocupa uma fração da altura da tela, sem estourar */
+.map-widget {
+  min-height: clamp(220px, 28vh, 360px);
+  max-height: clamp(260px, 34vh, 420px);
+}
+
+/* Doughnut de progresso compacto */
+#progress-chart-container {
+  width: clamp(120px, 18vh, 200px);
+  height: clamp(120px, 18vh, 200px);
+}
+
+/* Gráficos Top 3 com altura elástica */
+.occurrences-widget .chart-container {
+  height: clamp(120px, 22vh, 180px);
+}
+
+/* Blocos de janelas com limites */
+.janela-stats-widget-horizontal { min-height: 0; }
+.janela-block { min-width: clamp(84px, 10vmin, 120px); }
+.janela-block-name { font-size: clamp(.75em, 1.4vmin, .9em); }
+.janela-block-value { font-size: clamp(1.1em, 2.2vmin, 1.6em); }
+
+/* Totais em layout robusto (não quebrar) */
+.totals-widget {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(8px, 1.2vmin, 14px);
+  align-items: center;
+}
+.total-item { min-width: 0; }
+.total-label { font-size: clamp(.85em, 1.4vmin, .95em); }
+.total-value { font-size: clamp(1.2em, 2.4vmin, 2em); }
+
+/* ===== Garantir que a viewport não tenha overflow global ===== */
+html, body { height: 100%; }
+.dashboard-grid { min-height: 0; }           /* grid pode encolher */
+.column-left, .column-center, .column-right { min-height: 0; }
+.widget { min-height: 0; }                   /* widgets não forçam altura */
+.scrollable-content { min-height: 0; }       /* rolagem fica dentro */
+
+/* ===== Ajustes finos para telas com pouca altura ===== */
+@media (max-height: 800px) {
+  :root {
+    --gap-geral: clamp(6px, 1.0vmin, 16px);
+    --padding-widget: clamp(6px, 1.0vmin, 12px);
+  }
+  body { font-size: clamp(10px, 1.1vmin, 15px); }
+  #progress-chart-container { width: clamp(110px, 16vh, 170px); height: clamp(110px, 16vh, 170px); }
+  .map-widget { min-height: clamp(200px, 26vh, 320px); max-height: clamp(240px, 30vh, 360px); }
+}
+
+/* ===== Micro-ajuste visual do relógio no topo ===== */
+.clock-widget #time, .clock-widget #clock {
+  font-size: clamp(1.2rem, 2.6vmin, 1.8rem);
+  font-weight: 700;
+}
+#date {
+  font-size: clamp(.8rem, 1.6vmin, 1rem);
+  text-transform: capitalize;
+  color: var(--secondary-text);
+}
+
+/* Ícone do clima & temperatura compactos */
+.weather-body img#weather-icon {
+  width: clamp(40px, 6vmin, 64px);
+  height: auto;
+}
+.weather-body #temperature {
+  font-size: clamp(1.1rem, 2.2vmin, 1.6rem);
+  margin: 0;
+}
+.weather-body #description {
+  font-size: clamp(.8rem, 1.4vmin, .95rem);
+}
