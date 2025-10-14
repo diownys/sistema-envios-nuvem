@@ -1,47 +1,36 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard Corporativo - ATLAS S.A</title>
-  favicon.ico
-  https://fonts.googleapis.com
-  https://fonts.gstatic.com
-  <!-- Roboto como no seu HTML -->
-  https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&amp;display=swap
-  ./style.css
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <!-- TOPO: relógio + clima (esquerda) e logo (direita) -->
-  <header class="dashboard-header" role="banner" aria-label="Cabeçalho do dashboard">
-    <div class="header-left">
-      <!-- Clima -->
-      <section class="widget widget--sm weather-widget" aria-label="Clima">
-        <div class="weather-header">
-          <h2>☁️ Clima</h2>
-          <span id="city-name">--</span>
+  <header class="dashboard-header">
+    <div class="logo-container">
+      <img src="./drogavet_neuvye.png" alt="Logo">
+    </div>
+    <div class="header-info">
+      <div id="weather">
+        <img id="weather-icon" alt=""/>
+        <div>
+          <div id="temperature">--°C</div>
+          <small id="description">Carregando clima...</small>
         </div>
-        <div class="weather-body">
-          <img id="weather-icon" alt="Ícone do clima" width="64" height="64"/>
-          <p id="temperature">--°C</p>
-          <p id="description">Carregando clima...</p>
-        </div>
-      </section>
-
-      <!-- Relógio -->
-      <section class="widget widget--sm clock-widget" aria-label="Relógio">
+      </div>
+      <div id="date-time">
         <div id="time"><span id="clock">--:--:--</span></div>
         <div id="date">&nbsp;</div>
-      </section>
-    </div>
-
-    <div class="header-right logo-container">
-      <!-- Ajuste o src para sua logo -->
-      ./drogavet_neuvye.png
+      </div>
     </div>
   </header>
 
-  <main class="dashboard-grid" role="main">
+  <main class="dashboard-grid">
     <section class="column-left">
       <div class="widget birthday-widget">
         <h2>🎂 Aniversariantes do Mês</h2>
@@ -66,9 +55,9 @@
       <div class="widget map-widget">
         <h2>🗺️ Envios Concluídos por UF</h2>
         <div id="map-container">
-          <svg id="brazil-map-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Mapa do Brasil"></svg>
+          <svg id="brazil-map-svg"></svg>
         </div>
-        <div class="legend" aria-label="Legenda do mapa">
+        <div class="legend">
           <span><span class="swatch" style="background:#333"></span>Baixo</span>
           <span><span class="swatch" style="background:#706b5a"></span>Médio</span>
           <span><span class="swatch" style="background:#A2946A"></span>Alto</span>
@@ -108,7 +97,6 @@
         <h2>📈 Top 3 Ocorrências Internas</h2>
         <div class="chart-container"><canvas id="internas-chart"></canvas></div>
       </div>
-
       <div class="widget occurrences-widget">
         <h2>📈 Top 3 Ocorrências Externas</h2>
         <div class="chart-container"><canvas id="externas-chart"></canvas></div>
@@ -121,12 +109,12 @@
     </section>
   </main>
 
-  <footer class="news-ticker-container" role="contentinfo" aria-label="Comunicados">
+  <footer class="news-ticker-container">
     <div class="news-ticker"><p id="news-content">Carregando comunicados...</p></div>
   </footer>
 
-  https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js</script>
-  https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js</script>
-  ./script.js</script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script type="module" src="./script.js"></script>
 </body>
 </html>
