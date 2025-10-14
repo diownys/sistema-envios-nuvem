@@ -21,18 +21,15 @@
         </div>
         <div class="header-info">
             <div id="date-time">
-                <div id="time"></div>
-                <div id="date"></div>
+                <span id="date"></span>
+                <span id="clock"></span>
             </div>
             <div id="weather">
-                 <div class="weather-header">
-                    <h2 id="city-name"></h2>
-                    <img id="weather-icon" src="" alt="Ícone do Clima">
-                </div>
-                <div class="weather-body">
-                    <p id="temperature"></p>
-                    <p id="description"></p>
-                </div>
+                 <i class="fas fa-sun"></i>
+                 <span id="city-name">Carregando clima...</span>
+                 <span id="temperature"></span>
+                 <span id="description"></span>
+                 <img id="weather-icon" src="" alt="">
             </div>
         </div>
     </header>
@@ -42,22 +39,15 @@
             
             <div class="widget birthday-widget">
                 <h2><i class="fas fa-birthday-cake"></i> Aniversariantes do Mês</h2>
-                <div id="birthday-list" class="scrollable-content">
-                    <div class="scroller-inner">
-                        <div class="birthday-card">
-                            <img src="https://via.placeholder.com/60" alt="Foto">
-                            <p><strong>Nome Colega</strong><br>Setor</p>
-                        </div>
-                    </div>
+                <div id="birthday-list" class="scroller-wrapper scrollable-content" data-animated="true">
+                    <div class="scroller-inner"></div>
                 </div>
             </div>
             
             <div class="widget recognition-widget">
                 <h2><i class="fas fa-star"></i> Mural de Reconhecimento</h2>
-                <div id="recognition-list" class="scrollable-content">
-                    <div class="scroller-inner">
-                        <div class="recognition-card">"Reconhecimento de Exemplo"</div>
-                    </div>
+                <div id="recognition-list" class="scroller-wrapper scrollable-content" data-animated="true">
+                    <div class="scroller-inner"></div>
                 </div>
             </div>
         </div>

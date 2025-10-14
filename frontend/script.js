@@ -298,10 +298,37 @@ async function getNews() {
         }
     } catch (error) { console.error('Erro ao carregar notícias:', error); }
 }
+function padZero(num) {
+    return num.toString().padStart(2, '0');
+}
 function updateClock() {
-    const now = new Date(), timeEl = document.getElementById('time'), dateEl = document.getElementById('date');
-    timeEl.textContent = now.toLocaleTimeString('pt-BR');
-    dateEl.textContent = now.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const clockElement = document.getElementById('clock');
+    // Se o elemento do relógio não existir na página, não faz nada.
+    if (!clockElement) {
+        return;
+    }
+    
+    const now = new Date();
+    const hours = padZero(now.getHours());
+    const minutes = padZero(now.getMinutes());
+    const seconds = padZero(now.getSeconds());
+    
+    // Atualiza o texto do relógio
+    clockElement.textContent = ` ${hours}:${minutes}:${seconds}`;
+}
+
+// Função para configurar a data e iniciar o relógio
+function setupHeader() {
+    const dateElement = document.getElementById('date');
+    if (dateElement) {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateElement.textContent = now.toLocaleDateString('pt-BR', options);
+    }
+    
+    // Inicia o relógio e o atualiza a cada segundo
+    updateClock();
+    setInterval(updateClock, 1000);
 }
 function updateJanelaBlocks(janelas) {
     const container = document.getElementById('janela-stats-blocks');
@@ -375,8 +402,7 @@ async function updateMap(destinos) {
 
 
 // ======= INICIALIZAÇÃO E ATUALIZAÇÕES CONTÍNUAS =======
-function startDashboard() {
-    updateApiData();
+function updateApiData() {
     getWeather();
     getOccurrences();
     getBirthdays();
@@ -741,22 +767,42 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupInfiniteScroller() {
-    // Seleciona todos os elementos de scroller
     const scrollers = document.querySelectorAll(".scroller-wrapper");
 
     scrollers.forEach(wrapper => {
         const scrollerInner = wrapper.querySelector(".scroller-inner");
         const scrollerContent = Array.from(scrollerInner.children);
 
+        // Não faz a animação se não houver conteúdo
+        if (scrollerContent.length === 0) {
+            return;
+        }
+        
         // Duplica os itens para criar o efeito de loop contínuo
         scrollerContent.forEach(item => {
             const duplicatedItem = item.cloneNode(true);
-            // aria-hidden para acessibilidade, para que leitores de tela não leiam o conteúdo duplicado
             duplicatedItem.setAttribute("aria-hidden", true);
             scrollerInner.appendChild(duplicatedItem);
         });
-
-        // Adiciona o atributo para ativar a animação no CSS
+        
         wrapper.setAttribute("data-animated", "true");
     });
 }
+function startDashboard() {
+    setupHeader(); // Configura data e inicia o relógio
+    setupInfiniteScroller(); // Configura os carrosséis
+    // ... chame aqui outras funções que você precisa para carregar os gráficos
+    // Ex: loadChartData();
+}
+document.addEventListener('DOMContentLoaded', () => {
+    // Aqui você pode colocar a lógica que busca dados do Supabase
+    // e depois inicia o dashboard
+    
+    // Exemplo:
+    // fetchSupabaseData().then(() => {
+    //    startDashboard();
+    // });
+    
+    // Por enquanto, vamos iniciar diretamente:
+    startDashboard();
+});
