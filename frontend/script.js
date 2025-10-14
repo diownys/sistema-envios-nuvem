@@ -724,3 +724,39 @@ window.addEventListener('load', () => {
   Chart.register(progressGlowPlugin);
 })();
 //comentario para atualização
+
+// ... seu código de gráficos e kpis existente ...
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Lógica para data e hora
+    const dateTimeElement = document.getElementById('date-time');
+    if (dateTimeElement) {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateTimeElement.textContent = now.toLocaleDateString('pt-BR', options);
+    }
+
+    // Inicializa os carrosséis
+    setupInfiniteScroller();
+});
+
+function setupInfiniteScroller() {
+    // Seleciona todos os elementos de scroller
+    const scrollers = document.querySelectorAll(".scroller-wrapper");
+
+    scrollers.forEach(wrapper => {
+        const scrollerInner = wrapper.querySelector(".scroller-inner");
+        const scrollerContent = Array.from(scrollerInner.children);
+
+        // Duplica os itens para criar o efeito de loop contínuo
+        scrollerContent.forEach(item => {
+            const duplicatedItem = item.cloneNode(true);
+            // aria-hidden para acessibilidade, para que leitores de tela não leiam o conteúdo duplicado
+            duplicatedItem.setAttribute("aria-hidden", true);
+            scrollerInner.appendChild(duplicatedItem);
+        });
+
+        // Adiciona o atributo para ativar a animação no CSS
+        wrapper.setAttribute("data-animated", "true");
+    });
+}
