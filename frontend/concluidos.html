@@ -8,9 +8,10 @@
     body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
     .header { margin-bottom: 1rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
     h1 { color: #333; }
-    /* NOVO: Estilos para o campo de busca (copiado de vendas.html) */
-    .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .controls input { flex-grow: 1; padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; align-items: center; }
+    .controls .search-group { flex-grow: 1; min-width: 200px; }
+    .controls .date-group { display: flex; gap: 0.5rem; align-items: center; }
+    .controls input { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
     .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
@@ -27,7 +28,15 @@
   </div>
 
   <div class="controls">
-    <input type="text" id="search-input" placeholder="Busque por cliente ou cód. venda...">
+    <div class="search-group">
+      <input type="text" id="search-input" placeholder="Busque por cliente ou cód. venda..." style="width: 100%;">
+    </div>
+    <div class="date-group">
+      <label for="start-date-input">De:</label>
+      <input type="date" id="start-date-input">
+      <label for="end-date-input">Até:</label>
+      <input type="date" id="end-date-input">
+    </div>
   </div>
 
   <div class="table-container">
@@ -46,28 +55,54 @@
     
     let concluidosData = [];
     const tableBody = document.getElementById('concluidos-table-body');
+    const searchInput = document.getElementById('search-input');
+    const startDateInput = document.getElementById('start-date-input');
+    const endDateInput = document.getElementById('end-date-input');
+
+    // NOVO: Função centralizada para aplicar todos os filtros
+    function aplicarFiltros() {
+        const query = searchInput.value.toLowerCase();
+        
+        // Pega as datas dos inputs e ajusta para o início e fim do dia
+        const startDate = new Date(startDateInput.value);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(endDateInput.value);
+        endDate.setHours(23, 59, 59, 999);
+
+        const vendasFiltradas = concluidosData.filter(venda => {
+            // Filtro de texto
+            const textMatch = (venda.cliente_nome?.toLowerCase().includes(query)) ||
+                              (venda.codigo_venda?.toLowerCase().includes(query));
+            
+            // Filtro de data
+            const vendaDate = new Date(venda.updated_at);
+            const dateMatch = vendaDate >= startDate && vendaDate <= endDate;
+
+            return textMatch && dateMatch; // Retorna verdadeiro apenas se ambos os filtros corresponderem
+        });
+
+        renderTable(vendasFiltradas);
+    }
 
     document.addEventListener('DOMContentLoaded', async () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = '/login.html'; return; }
         
+        // NOVO: Define a data de hoje nos campos de data ao carregar a página
+        const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        startDateInput.value = hoje;
+        endDateInput.value = hoje;
+        
         await carregarConcluidos();
         
-        // NOVO: Adiciona o "ouvinte" para o campo de busca
-        const searchInput = document.getElementById('search-input');
-        searchInput.addEventListener('input', () => {
-            const query = searchInput.value.toLowerCase();
-            const vendasFiltradas = concluidosData.filter(venda => 
-                (venda.cliente_nome?.toLowerCase().includes(query)) ||
-                (venda.codigo_venda?.toLowerCase().includes(query))
-            );
-            // Re-renderiza a tabela apenas com os dados filtrados
-            renderTable(vendasFiltradas); 
-        });
+        // ATUALIZADO: Event listeners agora chamam a função central de filtro
+        searchInput.addEventListener('input', aplicarFiltros);
+        startDateInput.addEventListener('change', aplicarFiltros);
+        endDateInput.addEventListener('change', aplicarFiltros);
     });
     
-    // ATUALIZADO: A função agora aceita um parâmetro para saber quais dados renderizar
-    function renderTable(dadosParaRenderizar = concluidosData) {
+    function renderTable(dadosParaRenderizar) {
         tableBody.innerHTML = '';
         if (dadosParaRenderizar.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="5">Nenhuma venda encontrada para o filtro atual.</td></tr>';
@@ -95,7 +130,7 @@
             const { data, error } = await supabase.functions.invoke('get-concluidos');
             if (error) throw error;
             concluidosData = data.concluidos;
-            renderTable(); // Renderiza a tabela completa na primeira carga
+            aplicarFiltros(); // ATUALIZADO: Aplica o filtro (de hoje) assim que os dados carregam
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
         }
@@ -113,9 +148,9 @@
                     alert(`Erro ao reverter: ${error.message}`);
                     target.textContent = 'Reverter';
                 } else {
+                    // ATUALIZADO: Remove da lista principal e aplica os filtros novamente
                     concluidosData = concluidosData.filter(v => v.id != vendaId);
-                    // Dispara um novo evento de input para re-filtrar a lista visível
-                    document.getElementById('search-input').dispatchEvent(new Event('input'));
+                    aplicarFiltros(); 
                 }
             }
         }
