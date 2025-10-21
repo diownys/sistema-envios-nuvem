@@ -1,7 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-// Importa o seu CORS compartilhado
 import { corsHeaders } from '../_shared/cors.ts'
-// Importa o Parser de XML/HTML
 import { DOMParser, Element } from "https://deno.land/x/deno_dom/deno-dom-wasm.ts";
 
 // --- Constantes do PharmUp ---
@@ -10,52 +8,45 @@ const PHARMUP_PASS = Deno.env.get('PHARMUP_PASS')
 const API_BASE = "https://pharmup-industria-api.azurewebsites.net"
 const API_HEADERS = {
   "Accept": "application/json, */*;q=0.1",
-  "User-Agent": "Neuvye-Automacao-Supabase/1.0", // Atualizado
+  "User-Agent": "Neuvye-Automacao-Supabase/1.0",
   "Origin": "https://pharmup-industria.azurewebsites.net",
   "Referer": "https://pharmup-industria.azurewebsites.net/",
 }
 
-// --- Função de Login (do pharmup_client.py) ---
+// --- Função de Login ---
 async function getPharmUpToken(): Promise<string> {
   if (!PHARMUP_USER || !PHARMUP_PASS) {
     throw new Error("Credenciais PHARMUP_USER ou PHARMUP_PASS não configuradas.");
   }
   const url = `${API_BASE}/Login?login=${PHARMUP_USER}&senha=${PHARMUP_PASS}`
-  const res = await fetch(url, { 
-    method: 'POST',
-    headers: API_HEADERS
-  })
-
+  const res = await fetch(url, { method: 'POST', headers: API_HEADERS })
   if (!res.ok) throw new Error(`Falha no login PharmUp: ${res.statusText}`)
   const data = await res.json()
   if (!data.token) throw new Error("Login PharmUp OK, mas token não recebido.");
   return data.token
 }
 
-// --- Função de Parse (do pharmup_client.py) ---
-// Helper para facilitar a extração de texto do XML
+// --- Função de Parse XML ---
 function getText(doc: Element | null, selector: string): string | null {
   if (!doc) return null;
   return doc.querySelector(selector)?.textContent || null;
 }
 
 function parseNFeXML(xmlString: string) {
-  const doc = new DOMParser().parseFromString(xmlString, "application/xml");
+  // "Enganamos" o parser para ler XML como se fosse HTML
+  const doc = new DOMParser().parseFromString(xmlString, "text/html");
   if (!doc) throw new Error("Falha ao parsear o XML da NFe.");
 
   const nfe = doc.querySelector("NFe");
   if (!nfe) throw new Error("Nó <NFe> não encontrado no XML.");
-
+  
   const ide = nfe.querySelector("ide");
   const emit = nfe.querySelector("emit");
   const dest = nfe.querySelector("dest");
   const total = nfe.querySelector("total ICMSTot");
-
-  // Chave (do atributo Id="NFe...")
   const chave = nfe.querySelector("infNFe")?.getAttribute("Id")?.replace("NFe", "") || null;
-
-  // Itens (loop)
   const itens: object[] = [];
+  
   nfe.querySelectorAll("det").forEach(det => {
     const prod = det.querySelector("prod");
     if (prod) {
@@ -72,92 +63,85 @@ function parseNFeXML(xmlString: string) {
     }
   });
 
-  // Monta o JSON final
   return {
     chave: chave,
     numero: getText(ide, "nNF"),
     serie: getText(ide, "serie"),
     dhEmi: getText(ide, "dhEmi") || getText(ide, "dEmi"),
     natOp: getText(ide, "natOp"),
-
     emitente: {
-      CNPJ: getText(emit, "CNPJ"),
-      xNome: getText(emit, "xNome"),
-      IE: getText(emit, "IE"),
+      CNPJ: getText(emit, "CNPJ"), xNome: getText(emit, "xNome"), IE: getText(emit, "IE"),
       ender: {
-        xLgr: getText(emit, "enderEmit xLgr"),
-        nro: getText(emit, "enderEmit nro"),
-        xBairro: getText(emit, "enderEmit xBairro"),
-        xMun: getText(emit, "enderEmit xMun"),
-        UF: getText(emit, "enderEmit UF"),
-        CEP: getText(emit, "enderEmit CEP"),
+        xLgr: getText(emit, "enderEmit xLgr"), nro: getText(emit, "enderEmit nro"),
+        xBairro: getText(emit, "enderEmit xBairro"), xMun: getText(emit, "enderEmit xMun"),
+        UF: getText(emit, "enderEmit UF"), CEP: getText(emit, "enderEmit CEP"),
       }
     },
     destinatario: {
-      CNPJ: getText(dest, "CNPJ") || getText(dest, "CPF"),
-      xNome: getText(dest, "xNome"),
+      CNPJ: getText(dest, "CNPJ") || getText(dest, "CPF"), xNome: getText(dest, "xNome"),
       ender: {
-        xLgr: getText(dest, "enderDest xLgr"),
-        nro: getText(dest, "enderDest nro"),
-        xBairro: getText(dest, "enderDest xBairro"),
-        xMun: getText(dest, "enderDest xMun"),
-        UF: getText(dest, "enderDest UF"),
-        CEP: getText(dest, "enderDest CEP"),
+        xLgr: getText(dest, "enderDest xLgr"), nro: getText(dest, "enderDest nro"),
+        xBairro: getText(dest, "enderDest xBairro"), xMun: getText(dest, "enderDest xMun"),
+        UF: getText(dest, "enderDest UF"), CEP: getText(dest, "enderDest CEP"),
       }
     },
     itens: itens,
     totais: {
-      vProd: getText(total, "vProd"),
-      vFrete: getText(total, "vFrete"),
-      vDesc: getText(total, "vDesc"),
-      vIPI: getText(total, "vIPI"),
+      vProd: getText(total, "vProd"), vFrete: getText(total, "vFrete"),
+      vDesc: getText(total, "vDesc"), vIPI: getText(total, "vIPI"),
       vNF: getText(total, "vNF"),
     }
   };
 }
 
-// --- Handler Principal da Edge Function ---
+// --- Handler Principal (MODIFICADO) ---
 serve(async (req) => {
-  // Trata o OPTIONS (pré-requisição CORS)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { chave, de, ate } = await req.json()
-    if (!chave) throw new Error("A 'chave' da NFe é obrigatória.");
+    // 1. MUDANÇA: Recebemos 'codigoVenda' em vez de 'chave'
+    const { codigoVenda, de, ate } = await req.json()
+    if (!codigoVenda) throw new Error("O 'codigoVenda' é obrigatório.");
 
-    // 1. Autenticar no PharmUp
+    // 2. Autenticar no PharmUp
     const token = await getPharmUpToken()
-    const authHeaders = { 
-      ...API_HEADERS, 
-      'Authorization': `Bearer ${token}` 
-    }
+    const authHeaders = { ...API_HEADERS, 'Authorization': `Bearer ${token}` }
 
-    // 2. Achar a nota na listagem (para pegar o xmlLink)
-    const tipoNota = 2; // 2 = Transporte (conforme seu app.py)
-    const listUrl = `${API_BASE}/NotaFiscalSaida/List?filterKey=${chave}&tipoNota=${tipoNota}&emissaoDe=${de}&emissaoAte=${ate}&pageSize=5`
+    // 3. MUDANÇA: Buscar na API usando o 'codigoVenda' como 'filterKey'
+    const tipoNota = 2; // 2 = Transporte
+    
+    // Usamos o codigoVenda no filterKey. Reduzimos o pageSize
+    // pois esperamos que a API filtre para nós.
+    const listUrl = `${API_BASE}/NotaFiscalSaida/List?filterKey=${codigoVenda}&tipoNota=${tipoNota}&emissaoDe=${de}&emissaoAte=${ate}&pageSize=5&sortKey=dataEmissao&sortOrder=desc`
 
     const listRes = await fetch(listUrl, { headers: authHeaders })
     if (!listRes.ok) throw new Error(`Erro ao listar notas: ${listRes.statusText}`)
 
     const listData = await listRes.json()
+    
+    // 4. MUDANÇA: Checamos se a lista veio vazia
     if (!listData.list || listData.list.length === 0) {
-      throw new Error(`Nota com chave ${chave} não encontrada no período ${de}-${ate}.`);
+      throw new Error(`NENHUMA nota (tipo 2) com codigoVenda '${codigoVenda}' foi encontrada no período ${de}-${ate}.`);
     }
 
-    const xmlLink = listData.list[0].xmlLink
-    if (!xmlLink) throw new Error("Nota encontrada, mas sem xmlLink.");
+    // 5. MUDANÇA: Pegamos o primeiro resultado (não filtramos mais por chave)
+    // Assumimos que o primeiro item da lista filtrada é o correto.
+    const notaEncontrada = listData.list[0];
+    
+    const xmlLink = notaEncontrada.xmlLink
+    if (!xmlLink) throw new Error("Nota encontrada, mas o xmlLink está vazio.");
 
-    // 3. Baixar o XML
+    // 6. Baixar o XML (Igual antes)
     const xmlRes = await fetch(xmlLink, { headers: authHeaders })
     if (!xmlRes.ok) throw new Error(`Erro ao baixar XML: ${xmlRes.statusText}`)
     const xmlString = await xmlRes.text()
 
-    // 4. Parsear o XML
+    // 7. Parsear o XML (Igual antes)
     const nfeData = parseNFeXML(xmlString)
 
-    // 5. Retornar o JSON
+    // 8. Retornar o JSON (Igual antes)
     return new Response(
       JSON.stringify(nfeData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
