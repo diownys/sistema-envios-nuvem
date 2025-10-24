@@ -101,40 +101,40 @@
  #manual-submit:hover {
  background-color: #5a6268;
  }
-  
+ 
   /* ===== NOVO ESTILO PARA BOTÃO RESET (ADMIN) ===== */
   #reset-lote-btn {
-    width: 100%;
-    padding: 0.9rem;
-    background-color: #dc3545; /* Vermelho Perigo */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 0.5rem;
+ 	 width: 100%;
+ 	 padding: 0.9rem;
+ 	 background-color: #dc3545; /* Vermelho Perigo */
+ 	 color: white;
+ 	 border: none;
+ 	 border-radius: 5px;
+ 	 font-size: 1rem;
+ 	 font-weight: bold;
+ 	 cursor: pointer;
+ 	 transition: background-color 0.2s;
+ 	 margin-top: 0.5rem;
   }
   #reset-lote-btn:hover {
-    background-color: #c82333;
+ 	 background-color: #c82333;
   }
 
   /* ===== NOVO ESTILO PARA BOTÃO ROMANEIO (GERAL) ===== */
   #gerar-romaneio-btn {
-    width: 100%;
-    padding: 0.9rem;
-    background-color: #007bff; /* Azul Primário */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
+ 	 width: 100%;
+ 	 padding: 0.9rem;
+ 	 background-color: #007bff; /* Azul Primário */
+ 	 color: white;
+ 	 border: none;
+ 	 border-radius: 5px;
+ 	 font-size: 1rem;
+ 	 font-weight: bold;
+ 	 cursor: pointer;
+ 	 transition: background-color 0.2s;
   }
   #gerar-romaneio-btn:hover {
-    background-color: #0056b3;
+ 	 background-color: #0056b3;
   }
 
 </style>
@@ -151,13 +151,13 @@
  <label for="manual-qrcode">Entrada Manual (Admin)</label>
  <input type="text" id="manual-qrcode" placeholder="Digite o QR Code..."/>
  <button id="manual-submit">Conferir Manualmente</button>
-   
-   <button id="reset-lote-btn">Resetar Lote</button>
+ 	
+  <button id="reset-lote-btn">Resetar Lote</button>
 
  </div>
  <h2>Lista de Conferência (Realtime)</h2>
 
-   <div id="romaneio-container" style="margin-bottom: 1rem;"></div>
+  <div id="romaneio-container" style="margin-bottom: 1rem;"></div>
 
  <div id="lista-conferencia">Carregando lista...</div>
 </div>
@@ -212,10 +212,10 @@
 
  for (const item of data) {
   const isConcluido = item.volumes_conferidos === item.volumes_totais;
-    
+  
   if (!isConcluido) {
-    todosConcluidos = false;
- M }
+ 	 todosConcluidos = false;
+  }
 
   const statusClass = isConcluido ? 'concluido' : 'pendente';
   const statusDot = `<span class="status ${statusClass}"></span>`;
@@ -227,28 +227,28 @@
   }
 
   html += `
-   ${statusDot}
-   <strong>${item.venda_numero_display}</strong> 
-   (${item.cliente_nome_display || 'Cliente'})
-   <span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
+ 	${statusDot}
+ 	<strong>${item.venda_numero_display}</strong> 
+ 	(${item.cliente_nome_display || 'Cliente'})
+ 	<span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
   </div>
   `;
  }
  divLista.innerHTML = html;
 
-   if (todosConcluidos && data.length > 0) {
-    romaneioContainer.innerHTML = `
-     <p style="color: #28a745; font-weight: bold;">Todos os itens conferidos!</p>
-     <button id="gerar-romaneio-btn">
-      Gerar Romaneio
-     </button>
-    `;
-    
-    document.getElementById('gerar-romaneio-btn').onclick = () => {
-     alert("Pronto para gerar o Romaneio!");
-     // window.open(`/romaneio.html?lote_id=${LOTE_ID_PARA_TESTAR}`, '_blank');
-    };
-   }
+  if (todosConcluidos && data.length > 0) {
+ 	 romaneioContainer.innerHTML = `
+ 	  <p style="color: #28a745; font-weight: bold;">Todos os itens conferidos!</p>
+ 	  <button id="gerar-romaneio-btn">
+ 	 	 Gerar Romaneio
+ 	  </button>
+ 	 `;
+ 	 
+ 	 document.getElementById('gerar-romaneio-btn').onclick = () => {
+ 	  alert("Pronto para gerar o Romaneio!");
+ 	  // window.open(`/romaneio.html?lote_id=${LOTE_ID_PARA_TESTAR}`, '_blank');
+ 	 };
+  }
  }
 
  // 6. Função onScanSuccess (NENHUMA MUDANÇA AQUI)
@@ -260,12 +260,12 @@
   const response = await fetch('https://nfsuisftzddegihyhoha.supabase.co/functions/v1/conferir-volume', {
   method: 'POST',
   headers: { 
-   'Content-Type': 'application/json',
-   'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
   },
   body: JSON.stringify({
-   qr_code: qrCodeLido,
-   lote_id: LOTE_ID_PARA_TESTAR
+  qr_code: qrCodeLido,
+  lote_id: LOTE_ID_PARA_TESTAR
   })
   });
   
@@ -287,24 +287,34 @@
  manualInput.value = '';
  }
  
- // 7. Função para escutar mudanças em Realtime (===== CORREÇÃO IMPORTANTE AQUI =====)
+ // 7. ===== FUNÇÃO DE ESCUTAR REALTIME (ATUALIZADA) =====
  function escutarRealtime() {
- supabase
-  .channel('conferencia-realtime')
-  .on('postgres_changes', 
-  { 
-   event: 'UPDATE', 
-   schema: 'public', 
-   table: 'volumes_conferencia'
-      // ===== A LINHA DO "filter:" FOI REMOVIDA DAQUI =====
-  },
-  (payload) => {
-   // AGORA ESTA MENSAGEM VAI APARECER NO SEU CONSOLE (F12)
-      console.log('Mudança recebida!', payload);
-   renderizarLista(); 
-  }
+  console.log("Iniciando 'escutarRealtime'...");
+  
+  // MUDANÇA 1: Mudar o nome do canal para "limpar" qualquer cache.
+  const canal = supabase.channel('conferencia-db-changes'); 
+
+  canal.on('postgres_changes', 
+    { 
+      event: 'UPDATE', 
+      schema: 'public', 
+      table: 'volumes_conferencia'
+      // O filtro foi removido, o que está correto.
+    },
+    (payload) => {
+      // Esta mensagem TEM que aparecer no seu console agora!
+      console.log('MUDANÇA RECEBIDA! (UPDATE)', payload);
+      renderizarLista(); 
+    }
   )
-  .subscribe();
+  // MUDANÇA 2: Adicionar um callback ao .subscribe() para diagnóstico
+  .subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log('CONECTADO AO REALTIME! (Canal: conferencia-db-changes)');
+    } else {
+      console.error('FALHA AO CONECTAR AO REALTIME:', status);
+    }
+  });
  }
 
  // 8. FUNÇÃO DE CHECAR ADMIN (ATUALIZADA)
@@ -332,33 +342,33 @@
   console.log("Usuário é admin, mostrando campo manual.");
   manualInputContainer.style.display = 'block';
 
-    // LÓGICA DE CLIQUE DO RESET (ADMIN)
-    document.getElementById('reset-lote-btn').onclick = async () => {
-     if (!confirm('Tem certeza que deseja resetar este lote? Todos os volumes voltarão para "pendente".')) {
-      return;
-     }
-     
-     divResultado.style.color = '#007bff';
-     divResultado.innerHTML = 'Resetando lote...';
+ 	 // LÓGICA DE CLIQUE DO RESET (ADMIN)
+ 	 document.getElementById('reset-lote-btn').onclick = async () => {
+ 	  if (!confirm('Tem certeza que deseja resetar este lote? Todos os volumes voltarão para "pendente".')) {
+ 	 	 return;
+ 	  }
+ 	  
+ 	  divResultado.style.color = '#007bff';
+ 	  divResultado.innerHTML = 'Resetando lote...';
 
-     // Chama a função SQL
-     const { data, error } = await supabase.rpc('resetar_lote_conferencia', {
-      p_lote_id: LOTE_ID_PARA_TESTAR
-     });
+ 	  // Chama a função SQL
+ 	  const { data, error } = await supabase.rpc('resetar_lote_conferencia', {
+ 	 	 p_lote_id: LOTE_ID_PARA_TESTAR
+ 	  });
 
-     if (error) {
-      divResultado.style.color = '#dc3545';
-      divResultado.innerHTML = `Erro ao resetar: ${error.message}`;
-     } else {
-      divResultado.style.color = '#28a745';
-      divResultado.innerHTML = data; 
-      renderizarLista(); 
-     }
-    };
+ 	  if (error) {
+ 	 	 divResultado.style.color = '#dc3545';
+ 	 	 divResultado.innerHTML = `Erro ao resetar: ${error.message}`;
+ 	  } else {
+ 	 	 divResultado.style.color = '#28a745';
+ 	 	 divResultado.innerHTML = data; 
+ 	 	 renderizarLista(); 
+ 	  }
+ 	 };
  }
  }
 
- // 9. Botão de Submit Manual (SEM MUDANÇA)
+ // 9. Botão de Submit Manual 
  manualSubmit.onclick = () => {
  const qrCodeManual = manualInput.value.trim();
  if (qrCodeManual) {
@@ -376,7 +386,7 @@
  }
  });
 
- // 10. Inicializar o Scanner (SEM MUDANÇA)
+ // 10. Inicializar o Scanner
  const html5QrCode = new Html5Qrcode("scanner");
  html5QrCode.start(
  { facingMode: "environment" },
