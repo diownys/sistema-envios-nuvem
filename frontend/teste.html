@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conferência - Sistema de Envios</title>
+  
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  
+  <style>
+    /* Estilo copiado do seu login.html */
+    body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem 0; }
+    .conferencia-container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 600px; }
+    h1 { color: #333; margin-bottom: 1.5rem; }
+    h2 { color: #555; margin-bottom: 1rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
+
+    /* Estilos adaptados para a conferência */
+    #scanner {
+      width: 100%;
+      max-width: 500px; /* Ajuste se necessário */
+      margin: 0 auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .resultado-message {
+      color: #dc3545; /* Vermelho para erros por padrão */
+      margin-top: 1rem;
+      min-height: 1.2em;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    #lista-conferencia {
+      text-align: left;
+      margin-top: 1rem;
+    }
+
+    .item-venda {
+      padding: 12px;
+      border: 1px solid #ddd;
+      margin-bottom: 8px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.3s;
+    }
+
+    .status {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 12px;
+      flex-shrink: 0; /* Impede que a bolinha encolha */
+    }
+
+    .pendente { background-color: orange; }
+    .concluido { background-color: #28a745; } /* Verde */
+
+    .item-venda span {
+      font-size: 0.9rem;
+      color: #666;
+      margin-left: auto; /* Joga o contador para a direita */
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="conferencia-container">
+    <h1>Conferência de Lote</h1>
+    
+    <div id="scanner"></div>
+    <div id="resultado" class="resultado-message"></div>
+    
+    <h2>Lista de Conferência (Realtime)</h2>
+    <div id="lista-conferencia">Carregando lista...</div>
+  </div>
+
+  <script type="module">
+    // 2. Importar o Supabase-JS (como no seu login)
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    // === CONFIGURAÇÃO ===
+    // ⚠️ Peguei as chaves do seu 'login.html'. Estão corretas!
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    
+    // ⚠️ COLE O ID DO LOTE QUE VOCÊ INSERIU MANUALMENTE PARA TESTAR
+    const LOTE_ID_PARA_TESTAR = 'COLE_O_UUID_DO_SEU_LOTE_AQUI'; 
+    // === FIM DA CONFIGURAÇÃO ===
+
+    // 3. Inicializar o Supabase
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 4. Referências dos Elementos
+    const divLista = document.getElementById('lista-conferencia');
+    const divResultado = document.getElementById('resultado');
+    
+    // 5. Função para desenhar a lista na tela
+    async function renderizarLista() {
+      divLista.innerHTML = "Atualizando...";
+      
+      // Chamar a função RPC que criamos no Supabase
+      const { data, error } = await supabase.rpc('get_status_conferencia_lote', {
+        p_lote_id: LOTE_ID_PARA_TESTAR
+      });
+      
+      if (error) {
+        divLista.innerHTML = `Erro ao buscar lista: ${error.message}`;
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        divLista.innerHTML = "Nenhum item encontrado para este lote.";
+        return;
+      }
+
+      // Montar o HTML da lista
+      let html = '';
+      for (const item of data) {
+        const isConcluido = item.volumes_conferidos === item.volumes_totais;
+        const statusClass = isConcluido ? 'concluido' : 'pendente';
+        const statusDot = `<span class="status ${statusClass}"></span>`;
+        
+        if (isConcluido) {
+          // Adiciona um estilo sutil de "concluído"
+          html += `<div class="item-venda" style="background-color: #f0fff4;">`;
+        } else {
+          html += `<div class="item-venda">`;
+        }
+
+        html += `
+            ${statusDot}
+            <strong>${item.venda_numero_display}</strong> 
+            (${item.cliente_nome_display || 'Cliente'})
+            <span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
+          </div>
+        `;
+      }
+      divLista.innerHTML = html;
+    }
+
+    // 6. Função chamada quando o scanner lê um QR Code
+    async function onScanSuccess(qrCodeLido, decodedResult) {
+      divResultado.style.color = '#007bff'; // Azul (Processando)
+      divResultado.innerHTML = `Lido: ${qrCodeLido}. Processando...`;
+
+      try {
+        // Chamar a nossa Supabase Function
+        const response = await fetch('https://nfsuisftzddegihyhoha.supabase.co/functions/v1/conferir-volume', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}` // Boa prática
+          },
+          body: JSON.stringify({
+            qr_code: qrCodeLido,
+            lote_id: LOTE_ID_PARA_TESTAR
+          })
+        });
+        
+        const result = await response.json();
+
+        if (response.ok) {
+          // Sucesso!
+          divResultado.style.color = '#28a745'; // Verde (Sucesso)
+          divResultado.innerHTML = `SUCESSO: ${result.message}`;
+          // A lista vai se atualizar sozinha via Realtime!
+        } else {
+          // Erro!
+          divResultado.style.color = '#dc3545'; // Vermelho (Erro)
+          divResultado.innerHTML = `ERRO: ${result.message}`;
+        }
+
+      } catch (err) {
+        divResultado.style.color = '#dc3545'; // Vermelho (Erro)
+        divResultado.innerHTML = `ERRO ao chamar API: ${err.message}`;
+      }
+    }
+    
+    // 7. Função para escutar mudanças em Realtime
+    function escutarRealtime() {
+      supabase
+        .channel('conferencia-realtime')
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'volumes_conferencia',
+            filter: `lote_id=eq.${LOTE_ID_PARA_TESTAR}` // Só escuta este lote
+          },
+          (payload) => {
+            console.log('Mudança recebida!', payload);
+            // Apenas manda renderizar a lista de novo
+            renderizarLista();
+          }
+        )
+        .subscribe();
+    }
+
+    // 8. Inicializar o Scanner
+    const html5QrCode = new Html5Qrcode("scanner");
+    html5QrCode.start(
+      { facingMode: "environment" }, // Pedir a câmera traseira
+      {
+        fps: 5, // Reduzir o FPS economiza bateria
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          // Caixa de scan responsiva
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdge * 0.7);
+          return { width: qrboxSize, height: qrboxSize };
+        }
+      },
+      onScanSuccess, // Função de callback
+      (errorMessage) => { /* ignora erros de scan (ex: não achou QR) */ }
+    ).catch(err => {
+      document.getElementById("scanner").innerHTML = "Erro ao iniciar a câmera: " + err.message;
+    });
+
+    // 9. Iniciar tudo
+    renderizarLista();
+    escutarRealtime();
+
+  </script>
+</body>
+</html>
