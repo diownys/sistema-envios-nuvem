@@ -26,7 +26,7 @@
  <div class="container">
   <h1>Selecionar Janela</h1>
   <h2 id="data-hoje"></h2>   <div id="lista-janelas">
-   <p id="status">Carregando janelas pendentes...</p>
+   <p id="status">Carregando janelas para conferência...</p>
   </div>
  </div>
 
@@ -55,13 +55,13 @@
    const hojeISO = hoje.toISOString();
    const amanhaISO = amanha.toISOString();
 
-   // 2. Busca todas as 'janela_coleta' distintas que são de HOJE e 'Concluido'
+   // 2. Busca todas as 'janela_coleta' distintas que são de HOJE e 'Confirmado'
    const { data, error } = await supabase
     .from('envios')
     .select('janela_coleta')
         
-        // ===== ESTA É A MUDANÇA QUE VOCÊ PEDIU =====
-    .eq('status', 'Concluido')   // <-- MUDAMOS DE 'Pendente'
+        // ===== ESTA É A CORREÇÃO QUE VOCÊ PEDIU =====
+    .eq('status', 'Confirmado')   // <-- MUDAMOS PARA 'Confirmado'
         // ==========================================
 
     .gte('created_at', hojeISO)  // Criado DEPOIS de meia-noite de hoje (local)
@@ -76,7 +76,8 @@
    const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela Definida'))];
    
    if (janelasUnicas.length === 0) {
-    pStatus.innerText = "Nenhum envio 'Concluído' encontrado para hoje.";
+        // ===== MENSAGEM CORRIGIDA =====
+    pStatus.innerText = "Nenhum envio 'Confirmado' encontrado para hoje.";
     return;
    }
    
@@ -98,10 +99,10 @@
    button.disabled = true;
    button.innerText = 'Processando...';
 
-   // 5. Chama a FUNÇÃO MÁGICA (que agora busca 'Concluido')
+   // 5. Chama a FUNÇÃO MÁGICA (que agora busca 'Confirmado')
    const { data: lote_id, error } = await supabase.rpc('criar_lote_pela_janela', {
     p_janela_nome: nomeJanela
-   });
+ m  });
 
    if (error) {
     console.error('Erro ao chamar RPC criar_lote_pela_janela:', error);
