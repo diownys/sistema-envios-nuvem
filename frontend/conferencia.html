@@ -188,68 +188,105 @@
  const manualSubmit = document.getElementById('manual-submit');
  const romaneioContainer = document.getElementById('romaneio-container');
  
- // 5. Função para desenhar a lista na tela (ATUALIZADA)
+ // ===== FUNÇÃO renderizarLista() ATUALIZADA =====
  async function renderizarLista() {
- divLista.innerHTML = "Atualizando...";
- romaneioContainer.innerHTML = ""; 
- 
- const { data, error } = await supabase.rpc('get_status_conferencia_lote', {
-  p_lote_id: LOTE_ID_PARA_TESTAR
- });
- 
- if (error) {
-  divLista.innerHTML = `Erro ao buscar lista: ${error.message}`;
-  return;
- }
- 
- if (!data || data.length === 0) {
-  divLista.innerHTML = "Nenhum item encontrado para este lote. (Pode já ter sido conferido)";
-  return;
- }
-
- let html = '';
- let todosConcluidos = true;
-
- for (const item of data) {
-  const isConcluido = item.volumes_conferidos === item.volumes_totais;
+  divLista.innerHTML = "Atualizando...";
+  romaneioContainer.innerHTML = ""; // Limpa o botão
   
-  if (!isConcluido) {
- 	 todosConcluidos = false;
+  const { data, error } = await supabase.rpc('get_status_conferencia_lote', {
+    p_lote_id: LOTE_ID_PARA_TESTAR
+  });
+  
+  // Código de erro e lista vazia (igual ao que você já tinha)
+  if (error) { 
+    divLista.innerHTML = `Erro ao buscar lista: ${error.message}`;
+    return;
+  }
+  if (!data || data.length === 0) { 
+    divLista.innerHTML = "Nenhum item encontrado para este lote. (Pode já ter sido conferido)";
+    return;
   }
 
-  const statusClass = isConcluido ? 'concluido' : 'pendente';
-  const statusDot = `<span class="status ${statusClass}"></span>`;
-  
-  if (isConcluido) {
-  html += `<div class="item-venda" style="background-color: #f0fff4;">`;
-  } else {
-  html += `<div class="item-venda">`;
+  let html = '';
+  let todosConcluidos = true;
+
+  for (const item of data) {
+    const isConcluido = item.volumes_conferidos === item.volumes_totais;
+    if (!isConcluido) {
+      todosConcluidos = false;
+    }
+    // Código de montar o HTML da lista (igual ao que você já tinha)
+    const statusClass = isConcluido ? 'concluido' : 'pendente';
+    const statusDot = `<span class="status ${statusClass}"></span>`;
+    
+    if (isConcluido) {
+        html += `<div class="item-venda" style="background-color: #f0fff4;">`;
+    } else {
+        html += `<div class="item-venda">`;
+    }
+
+    html += `
+        ${statusDot}
+        <strong>${item.venda_numero_display}</strong> 
+        (${item.cliente_nome_display || 'Cliente'})
+        <span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
+    </div>
+    `;
   }
+  divLista.innerHTML = html;
 
-  html += `
- 	${statusDot}
- 	<strong>${item.venda_numero_display}</strong> 
- 	(${item.cliente_nome_display || 'Cliente'})
- 	<span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
-  </div>
-  `;
- }
- divLista.innerHTML = html;
-
+  // Lógica ATUALIZADA para chamar a NOVA função de romaneio
   if (todosConcluidos && data.length > 0) {
- 	 romaneioContainer.innerHTML = `
- 	  <p style="color: #28a745; font-weight: bold;">Todos os itens conferidos!</p>
- 	  <button id="gerar-romaneio-btn">
- 	 	 Gerar Romaneio
- 	  </button>
- 	 `;
- 	 
- 	 document.getElementById('gerar-romaneio-btn').onclick = () => {
- 	  alert("Pronto para gerar o Romaneio!");
- 	  // window.open(`/romaneio.html?lote_id=${LOTE_ID_PARA_TESTAR}`, '_blank');
- 	 };
+    romaneioContainer.innerHTML = `
+      <p style="color: #28a745; font-weight: bold;">Todos os itens conferidos!</p>
+      <button id="gerar-romaneio-btn">
+        Gerar Romaneio
+      </button>
+    `;
+    
+    // ATUALIZAÇÃO IMPORTANTE AQUI no onclick
+    document.getElementById('gerar-romaneio-btn').onclick = async () => {
+      const btn = document.getElementById('gerar-romaneio-btn');
+      btn.disabled = true;
+      btn.innerText = 'Gerando...';
+
+      try {
+        // Chama a NOVA função via fetch
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/gerar-romaneio-lote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}` // Usa a chave Anon
+          },
+          body: JSON.stringify({ lote_id: LOTE_ID_PARA_TESTAR })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erro ${response.status}`);
+        }
+
+        // Pega o HTML retornado
+        const htmlRomaneio = await response.text();
+
+        // Abre o HTML em uma nova aba
+        const blob = new Blob([htmlRomaneio], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        URL.revokeObjectURL(url); // Libera a memória
+
+        btn.innerText = 'Romaneio Gerado!'; // Feedback visual
+
+      } catch (err) {
+        console.error("Erro ao gerar romaneio:", err);
+        alert(`Erro ao gerar romaneio: ${err.message}`);
+        btn.disabled = false;
+        btn.innerText = 'Gerar Romaneio';
+      }
+    };
   }
  }
+ // ===== FIM DA FUNÇÃO renderizarLista() =====
 
  // 6. Função onScanSuccess (NENHUMA MUDANÇA AQUI)
  async function onScanSuccess(qrCodeLido, decodedResult) {
@@ -287,11 +324,10 @@
  manualInput.value = '';
  }
  
- // 7. ===== FUNÇÃO DE ESCUTAR REALTIME (ATUALIZADA) =====
+ // 7. Função escutarRealtime (NENHUMA MUDANÇA AQUI)
  function escutarRealtime() {
   console.log("Iniciando 'escutarRealtime'...");
   
-  // MUDANÇA 1: Mudar o nome do canal para "limpar" qualquer cache.
   const canal = supabase.channel('conferencia-db-changes'); 
 
   canal.on('postgres_changes', 
@@ -299,15 +335,12 @@
       event: 'UPDATE', 
       schema: 'public', 
       table: 'volumes_conferencia'
-      // O filtro foi removido, o que está correto.
     },
     (payload) => {
-      // Esta mensagem TEM que aparecer no seu console agora!
       console.log('MUDANÇA RECEBIDA! (UPDATE)', payload);
       renderizarLista(); 
     }
   )
-  // MUDANÇA 2: Adicionar um callback ao .subscribe() para diagnóstico
   .subscribe((status) => {
     if (status === 'SUBSCRIBED') {
       console.log('CONECTADO AO REALTIME! (Canal: conferencia-db-changes)');
@@ -317,7 +350,7 @@
   });
  }
 
- // 8. FUNÇÃO DE CHECAR ADMIN (ATUALIZADA)
+ // 8. FUNÇÃO DE CHECAR ADMIN (NENHUMA MUDANÇA AQUI)
  async function checkUserRole() {
  const { data: { session } } = await supabase.auth.getSession();
  if (!session) {
@@ -337,7 +370,6 @@
   return; 
  }
 
- // Se for admin, MOSTRA o campo de input manual
  if (profile && profile.role === 'admin') {
   console.log("Usuário é admin, mostrando campo manual.");
   manualInputContainer.style.display = 'block';
@@ -351,7 +383,6 @@
  	  divResultado.style.color = '#007bff';
  	  divResultado.innerHTML = 'Resetando lote...';
 
- 	  // Chama a função SQL
  	  const { data, error } = await supabase.rpc('resetar_lote_conferencia', {
  	 	 p_lote_id: LOTE_ID_PARA_TESTAR
  	  });
@@ -368,7 +399,7 @@
  }
  }
 
- // 9. Botão de Submit Manual 
+ // 9. Botão de Submit Manual (NENHUMA MUDANÇA AQUI)
  manualSubmit.onclick = () => {
  const qrCodeManual = manualInput.value.trim();
  if (qrCodeManual) {
@@ -386,7 +417,7 @@
  }
  });
 
- // 10. Inicializar o Scanner
+ // 10. Inicializar o Scanner (NENHUMA MUDANÇA AQUI)
  const html5QrCode = new Html5Qrcode("scanner");
  html5QrCode.start(
  { facingMode: "environment" },
@@ -404,10 +435,10 @@
  document.getElementById("scanner").innerHTML = "Erro ao iniciar a câmera: " + err.message;
  });
 
- // 11. Iniciar tudo
- checkUserRole(); // Verifica o login e o status de admin
- renderizarLista(); // Renderiza a lista inicial
- escutarRealtime(); // Escuta por mudanças
+ // 11. Iniciar tudo (NENHUMA MUDANÇA AQUI)
+ checkUserRole(); 
+ renderizarLista(); 
+ escutarRealtime(); 
 
 </script>
 </body>
