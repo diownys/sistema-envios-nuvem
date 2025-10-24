@@ -76,7 +76,7 @@
    const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela Definida'))];
    
    if (janelasUnicas.length === 0) {
-        // ===== MENSAGEM CORRIGIDA =====
+       
     pStatus.innerText = "Nenhum envio 'Confirmado' encontrado para hoje.";
     return;
    }
@@ -102,7 +102,7 @@
    // 5. Chama a FUNÇÃO MÁGICA (que agora busca 'Confirmado')
    const { data: lote_id, error } = await supabase.rpc('criar_lote_pela_janela', {
     p_janela_nome: nomeJanela
- m  });
+   });
 
    if (error) {
     console.error('Erro ao chamar RPC criar_lote_pela_janela:', error);
