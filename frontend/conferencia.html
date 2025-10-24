@@ -215,7 +215,7 @@
     
   if (!isConcluido) {
     todosConcluidos = false;
- M }
+  }
 
   const statusClass = isConcluido ? 'concluido' : 'pendente';
   const statusDot = `<span class="status ${statusClass}"></span>`;
@@ -358,7 +358,7 @@
  }
  }
 
- // 9. Botão de Submit Manual (SEM MUDANÇA)
+ // 9. Botão de Submit Manual 
  manualSubmit.onclick = () => {
  const qrCodeManual = manualInput.value.trim();
  if (qrCodeManual) {
@@ -376,7 +376,7 @@
  }
  });
 
- // 10. Inicializar o Scanner (SEM MUDANÇA)
+ // 10. Inicializar o Scanner
  const html5QrCode = new Html5Qrcode("scanner");
  html5QrCode.start(
  { facingMode: "environment" },
