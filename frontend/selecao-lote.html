@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Selecionar Lote - Sistema de Envios</title>
+  <style>
+    body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem 0; }
+    .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 500px; }
+    h1 { color: #333; margin-bottom: 1.5rem; }
+    #lista-janelas { max-height: 400px; overflow-y: auto; }
+    .janela-button {
+      display: block; width: 100%; padding: 1rem; margin-bottom: 0.5rem;
+      background-color: #007bff; color: white; border: none; border-radius: 5px;
+      font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s;
+      box-sizing: border-box;
+    }
+    .janela-button:hover { background-color: #0056b3; }
+    .janela-button:disabled { background-color: #ccc; }
+    #status { margin-top: 1rem; color: #555; }
+  </style>
+</head>
+<body>
+  
+  <div class="container">
+    <h1>Selecionar Janela de Coleta</h1>
+    <div id="lista-janelas">
+      <p id="status">Carregando janelas pendentes...</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    // Suas chaves (as mesmas do login)
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const divLista = document.getElementById('lista-janelas');
+    const pStatus = document.getElementById('status');
+
+    // Função para carregar as janelas disponíveis
+    async function carregarJanelas() {
+      // 1. Busca todas as 'janela_coleta' distintas que ainda estão 'Pendente'
+      const { data, error } = await supabase
+        .from('envios')
+        .select('janela_coleta')
+        .eq('status', 'Pendente') // Só janelas com envios pendentes
+        .neq('janela_coleta', null); // Ignora janelas vazias
+
+      if (error) {
+        pStatus.innerText = `Erro ao buscar janelas: ${error.message}`;
+        return;
+      }
+
+      // 2. Pega apenas os nomes únicos
+      const janelasUnicas = [...new Set(data.map(item => item.janela_coleta))];
+      
+      if (janelasUnicas.length === 0) {
+        pStatus.innerText = "Nenhum envio pendente encontrado.";
+        return;
+      }
+      
+      pStatus.remove(); // Remove o "Carregando..."
+      divLista.innerHTML = ''; // Limpa a lista
+
+      // 3. Cria um botão para cada janela
+      janelasUnicas.forEach(nomeJanela => {
+        const button = document.createElement('button');
+        button.className = 'janela-button';
+        button.innerText = nomeJanela;
+        button.onclick = () => selecionarJanela(button, nomeJanela);
+        divLista.appendChild(button);
+      });
+    }
+
+    // Função chamada quando o usuário clica em uma janela
+    async function selecionarJanela(button, nomeJanela) {
+      button.disabled = true;
+      button.innerText = 'Processando...';
+
+      // 4. Chama a FUNÇÃO MÁGICA que criamos no Passo 1
+      const { data: lote_id, error } = await supabase.rpc('criar_lote_pela_janela', {
+        p_janela_nome: nomeJanela
+      });
+
+      if (error) {
+        button.innerText = `Erro: ${error.message}`;
+        button.disabled = false;
+        return;
+      }
+      
+      // 5. DEU CERTO! Redireciona para a página de conferência com o ID do lote
+      window.location.href = `/teste.html?lote_id=${lote_id}`;
+    }
+
+    // Inicia o processo
+    carregarJanelas();
+  </script>
+</body>
+</html>
