@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Gerar Romaneio</title>
+
+  <meta name="supabase-url"  content="https://nfsuisftzddegihyhoha.supabase.co">
+  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
+
+  <style>
+    body { font-family: sans-serif; margin: 24px; background:#f7f7fb; }
+    .card { background:#fff; border:1px solid #e9e9ef; border-radius:8px; padding:16px; max-width:720px; margin: auto; }
+    h1 { text-align: center; }
+    .row { display:flex; gap:12px; align-items:center; margin:12px 0; flex-wrap:wrap; }
+    label { min-width:110px; color:#333; }
+    input, select, button { padding:8px 10px; border:1px solid #d0d0da; border-radius:6px; font-size: 1rem; }
+    button { background:#007bff; color:#fff; cursor:pointer; }
+    button:disabled { background:#c7c7d3; cursor:not-allowed; }
+    #log { white-space:pre-wrap; background:#fafafa; border:1px dashed #ddd; padding:10px; border-radius:6px; margin-top:10px; min-height:3em; }
+    a { color:#6c757d; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Gerar Romaneio de Coleta</h1>
+    <div class="row">
+      <label for="start">Início</label>
+      <input id="start" type="date"/>
+      <label for="end">Fim</label>
+      <input id="end" type="date"/>
+      <button id="btnCarregar">Carregar janelas</button>
+    </div>
+
+    <div class="row">
+      <label for="janelas">Janelas</label>
+      <select id="janelas" style="min-width:280px">
+        <option>-- carregue o período --</option>
+      </select>
+      <button id="btnGerar" disabled>Gerar Documento</button>
+    </div>
+
+    <div id="log">Aguardando…</div>
+
+    <div class="row">
+      <a href="/index.html">Voltar ao Dashboard</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    // --- SETUP INICIAL ---
+    const logDiv = document.getElementById('log');
+    const log = (m) => { logDiv.textContent = m; };
+
+    const getMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.content?.trim() || '';
+    
+    // --- CORREÇÃO APLICADA AQUI ---
+    const SUPABASE_URL  = getMeta('supabase-url');
+    const SUPABASE_ANON = getMeta('supabase-anon');
+
+    if (!SUPABASE_URL || !SUPABASE_ANON) {
+      log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
+      throw new Error('Metas de configuração ausentes.');
+    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    const startInput = document.getElementById('start');
+    const endInput   = document.getElementById('end');
+    const btnCarregar = document.getElementById('btnCarregar');
+    const selJanelas  = document.getElementById('janelas');
+    const btnGerar    = document.getElementById('btnGerar');
+
+    const today = new Date().toISOString().split('T')[0];
+    startInput.value = today;
+    endInput.value   = today;
+
+    // --- LÓGICA DE EVENTOS ---
+    btnCarregar.addEventListener('click', async () => {
+      try {
+        btnCarregar.disabled = true;
+        btnGerar.disabled = true;
+        selJanelas.innerHTML = '<option>Carregando…</option>';
+        log('Consultando janelas confirmadas…');
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          log('Sessão expirada. Faça login novamente.');
+          location.href = '/login.html';
+          return;
+        }
+        
+        const startOfDay = new Date(startInput.value + 'T00:00:00Z'); // Usando Z para UTC
+        const endOfDay = new Date(endInput.value + 'T00:00:00Z');
+        endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+        const { data, error } = await supabase.functions.invoke('get-janelas-para-romaneio', {
+            body: { 
+                start_date: startOfDay.toISOString(), 
+                end_date: endOfDay.toISOString() 
+            }
+        });
+        
+        if (error) throw error;
+
+        const { janelas = [] } = data;
+        log(`Encontradas ${janelas.length} janelas para o período selecionado.`);
+
+        selJanelas.innerHTML = '';
+        if (janelas.length === 0) {
+          selJanelas.innerHTML = '<option>Nenhuma janela encontrada.</option>';
+          btnGerar.disabled = true;
+          return;
+        }
+        janelas.forEach(j => {
+          selJanelas.innerHTML += `<option value="${j}">${j}</option>`;
+        });
+        btnGerar.disabled = false;
+      } catch (e) {
+        log('Erro: ' + (e?.message ?? e));
+        selJanelas.innerHTML = '<option>Erro ao carregar.</option>';
+      } finally {
+        btnCarregar.disabled = false;
+      }
+    });
+
+    btnGerar.addEventListener('click', async () => {
+        const janela = selJanelas.value;
+        if (!janela || selJanelas.options[selJanelas.selectedIndex]?.value.startsWith('Nenhuma')) {
+            log('Selecione uma janela válida.');
+            return;
+        }
+        try {
+            btnGerar.disabled = true;
+            log(`Gerando romaneio para: ${janela}...`);
+
+            const startOfDay = new Date(startInput.value + 'T00:00:00Z');
+            const endOfDay = new Date(endInput.value + 'T00:00:00Z');
+            endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
+
+            const { data: htmlString, error } = await supabase.functions.invoke('gerar-romaneio', {
+                body: { 
+                    janela_coleta: janela,
+                    start_date: startOfDay.toISOString(),
+                    end_date: endOfDay.toISOString()
+                },
+                responseType: 'text'
+            });
+
+            if (error) throw error;
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlString);
+            printWindow.document.close();
+            printWindow.print();
+            log(`Romaneio para "${janela}" gerado com sucesso.`);
+
+        } catch (e) {
+            log('Erro ao gerar documento: ' + (e?.message ?? e));
+        } finally {
+            btnGerar.disabled = false;
+        }
+    });
+
+    // Carrega as janelas do dia atual ao iniciar a página
+    btnCarregar.click();
+  </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Vendas PharmUp</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* CSS Básico para ficar bonito */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            color: #333; 
+        }
+        #busca-container {
+            margin-bottom: 20px;
+        }
+        #codigoVendaInput {
+            font-size: 16px;
+            padding: 10px;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        #buscarBtn {
+            font-size: 16px;
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #0070f3; /* Azul */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 5px;
+        }
+        #buscarBtn:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        .sucesso {
+            color: #008a20; /* Verde */
+        }
+        .erro {
+            color: #d93025; /* Vermelho */
+        }
+        /* Área de visualização do JSON */
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto; 
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Buscador de Vendas (PharmUp)</h1>
+
+    <div id="busca-container">
+        <input type="text" id="codigoVendaInput" placeholder="Digite o código da venda (ex: 101152)">
+        <button id="buscarBtn">Buscar</button>
+    </div>
+
+    <div id="status"></div>
+
+    <pre><code id="jsonResultado">Aguardando busca...</code></pre>
+
+    <script>
+        // --- 2. Configure com suas chaves do Supabase ---
+        // (Copiei as chaves do seu exemplo, elas são públicas)
+        const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+        
+        // --- 3. Inicialize o cliente ---
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- 4. Pegando os elementos do HTML ---
+        const input = document.getElementById('codigoVendaInput');
+        const btn = document.getElementById('buscarBtn');
+        const statusEl = document.getElementById('status');
+        const resultadoEl = document.getElementById('jsonResultado');
+
+        // --- 5. Adiciona os "escutadores" de evento ---
+        btn.addEventListener('click', buscarVenda);
+        input.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                buscarVenda();
+            }
+        });
+
+        // --- 6. A Função Principal (MODIFICADA) ---
+        async function buscarVenda() {
+            const codigo = input.value.trim();
+
+            if (!codigo) {
+                statusEl.textContent = 'Por favor, digite um código de venda.';
+                statusEl.className = 'erro';
+                return;
+            }
+
+            // Atualiza a UI para "carregando"
+            statusEl.textContent = 'Invocando função... ⏳';
+            statusEl.className = '';
+            resultadoEl.textContent = '';
+            btn.disabled = true;
+
+            try {
+                // --- MUDANÇA PRINCIPAL: Usando supabase.functions.invoke ---
+                // Chama a sua nova função 'buscador-vendas'
+                const { data, error } = await supabase.functions.invoke('buscador-vendas', {
+                    body: { codigoVenda: codigo }
+                });
+
+                if (error) throw error; // Joga o erro para o catch
+
+                // --- SUCESSO! ---
+                statusEl.textContent = 'Venda encontrada com sucesso! ✅';
+                statusEl.className = 'sucesso';
+                // Formata o JSON para exibição "bonita"
+                resultadoEl.textContent = JSON.stringify(data, null, 2);
+
+            } catch (err) {
+                // --- FALHA! ---
+                console.error('Erro ao invocar função:', err);
+                // Pega a mensagem de erro de dentro do objeto de erro do Supabase
+                const errorMsg = err.context?.error?.message || err.message || JSON.stringify(err, null, 2);
+                
+                statusEl.textContent = `Erro: ${errorMsg}`;
+                statusEl.className = 'erro';
+                resultadoEl.textContent = 'Falha ao buscar dados.';
+
+            } finally {
+                // Sempre reabilita o botão no final
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>

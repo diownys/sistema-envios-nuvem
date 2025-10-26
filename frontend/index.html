@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Envios</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 2rem; 
+            flex-wrap: wrap; 
+        }
+        /* Ajuste para garantir que o título e o filtro de data fiquem lado a lado */
+        .header h1 { color: #333; margin-bottom: 0; }
+        .header-controls { 
+            display: flex; 
+            gap: 1rem; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            margin-bottom: 1rem;
+        }
+        #date-filter-input { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+        .header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        /* Estilo do Card Aprimorado */
+        .menu-card { 
+            background: white; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+            text-decoration: none; 
+            color: #333; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; /* Melhor alinhamento vertical */
+            min-height: 120px; 
+        }
+        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        .card-title { font-size: 1.2rem; font-weight: bold; text-align: center; margin-bottom: 1rem; }
+        .card-stats { text-align: center; font-size: 0.9rem; color: #555; }
+        .progress-bar { background-color: #e9ecef; border-radius: 5px; height: 10px; margin-top: 0.75rem; overflow: hidden; }
+        .progress-bar-inner { background-color: #28a745; height: 100%; transition: width 0.5s ease-in-out; }
+        
+        .no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; grid-column: 1 / -1; }
+        /* Estilo do Card Especial */
+        .menu-card-special { 
+            background-color: #ffc107; 
+            justify-content: center; 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            body { padding: 2rem; }
+            .header-controls { margin-bottom: 0; }
+            .grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+            .btn-import { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-controls">
+            <h1>Menus de Coleta</h1>
+            <input type="date" id="date-filter-input">
+        </div>
+        <div class="header-buttons">
+            <a href="envio-form.html" class="btn-import" style="background-color: #007bff;">Adicionar Venda</a>
+            <a href="relatorios.html" class="btn-import" style="background-color: #17a2b8;">Relatórios</a>
+            <a href="dashboard.html" class="btn-import" style="background-color: #fd7e14;">Dashboard KPIs</a>
+            <a href="romaneio.html" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
+            <a href="importar.html" class="btn-import">Importar Planilha</a>
+            <div id="admin-button-placeholder"></div>
+            <a href="#" id="logout-button" class="btn-import" style="background-color: #dc3545;">Sair</a>
+        </div>
+    </div>
+
+    <div class="grid-container" id="envios-container">
+        <div class="no-data"><p>Carregando menus de coleta...</p></div>
+    </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    // CHAVES SUPABASE DO PRIMEIRO CÓDIGO MANTIDAS
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    const dateInput = document.getElementById('date-filter-input');
+    // ID do container padronizado para 'envios-container' conforme o primeiro código
+    const container = document.getElementById('envios-container'); 
+
+    // Função para definir a data padrão no input e carregar os dados (mantida)
+    function setDateAndFetch(date) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        
+        carregarMenuDeColeta(date);
+    }
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Lógica de Autenticação, Admin e Logout (mantida)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            window.location.href = '/login.html';
+            return;
+        }
+
+        const { data: isAdmin } = await supabase.rpc('is_admin');
+        if (isAdmin) {
+            const placeholder = document.getElementById('admin-button-placeholder');
+            placeholder.innerHTML = `<a href="/admin.html" class="btn-import" style="background-color: #6f42c1;">Painel Admin</a>`;
+        }
+        
+        const logoutButton = document.getElementById('logout-button');
+        logoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            await supabase.auth.signOut();
+            window.location.href = '/login.html';
+        });
+
+        // Define a data padrão como "hoje" e busca os dados
+        setDateAndFetch(new Date());
+
+        // Listener para o filtro de data (mantido)
+        dateInput.addEventListener('change', () => {
+            const [year, month, day] = dateInput.value.split('-').map(Number);
+            const selectedDate = new Date(year, month - 1, day);
+            carregarMenuDeColeta(selectedDate);
+        });
+    });
+
+    // Função de carregamento com o link atualizado (Unificado do segundo código)
+    async function carregarMenuDeColeta(date) {
+        container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
+
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        try {
+            // Chama a função Supabase com o filtro de data
+            const { data, error } = await supabase.functions.invoke('get-janelas-por-dia', {
+                body: {
+                    start_date: startOfDay.toISOString(),
+                    end_date: endOfDay.toISOString()
+                }
+            });
+            
+            if (error) throw error;
+            
+            container.innerHTML = '';
+            
+            // Pega a data formatada do input para usar na URL
+            const dateString = dateInput.value; 
+
+            if (!data.janelas || data.janelas.length === 0) {
+                container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada para esta data.</p></div>';
+            } else {
+                // Lógica de Renderização com Estatísticas
+                data.janelas.forEach(janela => {
+                    const total = parseInt(janela.total_envios || 0);
+                    const confirmados = parseInt(janela.envios_confirmados || 0);
+                    const pendentes = total - confirmados;
+                    const porcentagem = total > 0 ? (confirmados / total) * 100 : 0;
+
+                    container.innerHTML += `
+                        <a href="vendas.html?janela=${encodeURIComponent(janela.janela_coleta)}&data=${dateString}" class="menu-card">
+                            <div class="card-title">${janela.janela_coleta}</div>
+                            <div class="card-stats">
+                                <span>${pendentes} Pendentes / ${total} Total</span>
+                                <div class="progress-bar">
+                                    <div class="progress-bar-inner" style="width: ${porcentagem}%;"></div>
+                                </div>
+                                <span>${porcentagem.toFixed(0)}% Concluído</span>
+                            </div>
+                        </a>
+                    `;
+                });
+            }
+            
+            // Adiciona o card de concluídos no final
+            container.innerHTML += `<a href="concluidos.html" class="menu-card menu-card-special">Ver Vendas Concluídas</a>`;
+
+        } catch (error) {
+            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
+            console.error('Erro ao invocar a função:', error);
+        }
+    }
+</script>
+</body>
+</html>

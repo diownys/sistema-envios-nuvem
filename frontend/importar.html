@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Importar Envios</title>
+
+  <!-- TROCAR pelos valores do seu projeto -->
+  <meta name="supabase-url"  content="https://nfsuisftzddegihyhoha.supabase.co">
+  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
+
+  <style>
+    body { font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f4f9; margin:0; }
+    .container { background:#fff; padding:2rem 3rem; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,.1); text-align:center; width:90%; max-width:500px; }
+    h1 { color:#333; margin-bottom:1.5rem; }
+    input[type="file"] { border:1px solid #ddd; padding:.8rem; border-radius:5px; width:100%; box-sizing:border-box; }
+    button { background:#007bff; color:#fff; border:none; padding:.8rem 1.5rem; border-radius:5px; cursor:pointer; font-size:1rem; margin-top:1.5rem; width:100%; transition:background-color .2s; }
+    button:disabled { background:#ccc; cursor:not-allowed; }
+    button:hover:not(:disabled) { background:#0056b3; }
+    a { display:block; margin-top:1rem; color:#6c757d; text-decoration:none; }
+    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; }
+    .success { color:#155724; }
+    .error   { color:#721c24; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Importar Planilha</h1>
+    <div class="row">
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" />
+    </div>
+    <div class="row">
+      <button id="btnEnviar">Enviar Arquivo</button>
+    </div>
+    <div class="row">
+      <div id="log">Selecione um arquivo .xlsx ou .csv para importar.</div>
+    </div>
+    <a href="/index.htm">Voltar ao Dashboard</a>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    const SUPABASE_URL  = document.querySelector('meta[name="supabase-url"]').content
+    const SUPABASE_ANON = document.querySelector('meta[name="supabase-anon"]').content
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
+
+    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
+    const FUNCTIONS_URL = `https://${projectRef}.functions.supabase.co/import-excel`
+
+    const btn = document.getElementById('btnEnviar')
+    const fileInput = document.getElementById('file')
+    const logDiv = document.getElementById('log')
+    const log = (msg, type='') => { logDiv.textContent = msg; logDiv.className = type }
+
+    btn.addEventListener('click', async () => {
+      try {
+        const file = fileInput.files?.[0]
+        if (!file) return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error')
+
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          log('Sessão expirada. Redirecionando para o login...', 'error')
+          setTimeout(() => location.href = '/login.html', 1500)
+          return
+        }
+
+        btn.disabled = true
+        log('Enviando e processando o arquivo, aguarde…')
+
+        const form = new FormData()
+        form.append('file', file, file.name)
+
+        const resp = await fetch(FUNCTIONS_URL, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          body: form
+        })
+
+        let text = await resp.text()
+        let payload
+        try { payload = JSON.parse(text) } catch { payload = { error: text } }
+
+        if (!resp.ok) throw new Error(payload?.error || 'Falha ao importar.')
+
+        log(payload?.message || 'Importação concluída com sucesso!', 'success')
+        fileInput.value = ''
+      } catch (err) {
+        log('Erro: ' + (err?.message ?? err), 'error')
+      } finally {
+        btn.disabled = false
+      }
+    })
+  </script>
+</body>
+</html>

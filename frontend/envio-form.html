@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Venda</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        label { font-weight: bold; margin-bottom: 0.5rem; }
+        input, select { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
+        .form-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; }
+        .btn { padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 5px; color: white; border: none; cursor: pointer; font-size: 1rem; }
+        .btn-save { background-color: #28a745; }
+        .btn-cancel { background-color: #6c757d; }
+        .message { font-weight: bold; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="page-title">Carregando Formulário...</h1>
+        <form id="envio-form">
+            <div class="form-grid">
+                                <div class="form-group full-width">
+                    <label for="marca">Marca</label>
+                    <select id="marca" name="marca" required>
+                        <option value="Neuvye">Neuvye</option>
+                        <option value="DrogaVET">DrogaVET</option>
+                    </select>
+                </div>
+                
+                <div class="form-group"><label for="codigo_venda">Código da Venda</label><input type="text" id="codigo_venda" name="codigo_venda" required></div>
+                <div class="form-group"><label for="ordem_manipulacao">Ordem de Manipulação</label><input type="text" id="ordem_manipulacao" name="ordem_manipulacao"></div>
+                <div class="form-group full-width"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" name="cliente_nome" required></div>
+                <div class="form-group"><label for="valor_venda">Valor da Venda (R$)</label><input type="text" id="valor_venda" name="valor_venda" required></div>
+                <div class="form-group"><label for="volumes">Volumes</label><input type="number" id="volumes" name="volumes" value="1" required></div>
+                
+                                <div class="form-group"><label for="janela_coleta">Janela de Coleta</label><input type="text" id="janela_coleta" name="janela_coleta" required></div>
+                
+                <div class="form-group full-width"><label for="endereco">Endereço</label><input type="text" id="endereco" name="endereco"></div>
+                <div class="form-group"><label for="cidade">Cidade</label><input type="text" id="cidade" name="cidade"></div>
+                <div class="form-group"><label for="numero_nota">Número da Nota</label><input type="text" id="numero_nota" name="numero_nota"></div>
+            </div>
+            <div class="form-actions">
+                <a href="/index.html" id="cancel-link" class="btn btn-cancel">Cancelar</a>
+                <button type="submit" class="btn btn-save">Salvar</button>
+            </div>
+        </form>
+        <div id="success-message" class="message" style="display: none; color: #155724;"></div>
+    </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // Encontrada em Project Settings > API
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // A chave pública (anon)
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const form = document.getElementById('envio-form');
+    const pageTitle = document.getElementById('page-title');
+    const successMessage = document.getElementById('success-message');
+    let editMode = false;
+    let envioId = null;
+    let originalJanela = '';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { window.location.href = '/login.html'; return; }
+
+        const params = new URLSearchParams(window.location.search);
+        envioId = params.get('id');
+
+        if (envioId) {
+            // MODO DE EDIÇÃO
+            editMode = true;
+            pageTitle.textContent = 'Editar Venda';
+            await fetchAndPopulateForm(envioId);
+        } else {
+            // MODO DE ADIÇÃO
+            editMode = false;
+            pageTitle.textContent = 'Adicionar Nova Venda';
+            document.getElementById('cancel-link').href = '/index.html';
+        }
+    });
+
+    async function fetchAndPopulateForm(id) {
+        try {
+            // A função 'get-envio-by-id' deve retornar a marca
+            const { data, error } = await supabase.functions.invoke('get-envio-by-id', { body: { id: parseInt(id) } });
+            if (error) throw error;
+            const envio = data.envio;
+            
+            // Este loop preenche todos os campos, incluindo o novo <select id="marca">
+            for (const key in envio) {
+                const input = document.getElementById(key);
+                if (input) input.value = envio[key];
+            }
+            pageTitle.textContent = `Editar Venda #${envio.codigo_venda}`;
+            originalJanela = envio.janela_coleta;
+            document.getElementById('cancel-link').href = `vendas.html?janela=${encodeURIComponent(originalJanela)}`;
+        } catch (error) {
+            alert(`Erro ao carregar dados da venda: ${error.message}`);
+        }
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        // Esta parte captura AUTOMATICAMENTE o novo campo 'marca'
+        const formData = new FormData(form);
+        const dataObject = Object.fromEntries(formData.entries());
+        let redirectUrl = '/index.html';
+
+        try {
+            let error;
+            
+            if (editMode) {
+                // Se está em modo de edição, chama a API de update. 'dataObject' inclui agora a 'marca'.
+                const { error: updateError } = await supabase.functions.invoke('update-envio', { body: { id: parseInt(envioId), updates: dataObject } });
+                error = updateError;
+                redirectUrl = `vendas.html?janela=${encodeURIComponent(dataObject.janela_coleta || originalJanela)}`;
+            } else {
+                // Se está em modo de adição, chama a API de create. 'dataObject' inclui agora a 'marca'.
+                const { error: createError } = await supabase.functions.invoke('create-envio', { body: dataObject });
+                error = createError;
+            }
+
+            if (error) throw error;
+            
+            successMessage.textContent = `Venda ${editMode ? 'atualizada' : 'criada'} com sucesso! Redirecionando...`;
+            successMessage.style.display = 'block';
+            setTimeout(() => { window.location.href = redirectUrl; }, 2000);
+        } catch (error) {
+            alert(`Erro ao salvar: ${error.message}`);
+        }
+    });
+</script>
+</body>
+</html>

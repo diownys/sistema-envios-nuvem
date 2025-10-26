@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste da Função (Etiqueta 110x150mm)</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* Estilos da Página de Teste */
+    body { 
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 20px; 
+      display: flex; 
+      gap: 30px; 
+      background: #f5f5f5;
+    }
+    .col-form { 
+      flex: 1; 
+      max-width: 500px;
+    }
+    .col-preview { 
+      flex: 1; 
+    }
+    input, button { 
+      font-size: 16px; 
+      padding: 8px; 
+      margin: 5px 0 10px 0; 
+      width: 95%;
+    }
+    pre { 
+      background-color: #f4f4f4; 
+      border: 1px solid #ddd; 
+      padding: 10px; 
+      max-height: 300px; 
+      overflow-y: auto; 
+      font-size: 12px;
+    }
+    #etiqueta-wrapper {
+      /* Ajusta o zoom para caber na tela */
+      transform: scale(0.7);
+      transform-origin: top left;
+    }
+
+    /* ============================================== */
+    /* SEUS ESTILOS DA ETIQUETA (copiados 1:1) */
+    /* ============================================== */
+    @page {
+      size: 110mm 150mm;
+      margin: 0;
+    }
+    .etiqueta {
+      width: 110mm;
+      height: 150mm;
+      background: #fff;
+      border: 1px dashed #999;
+      box-sizing: border-box;
+      padding: 8mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 4mm;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1); /* Sombra para o preview */
+    }
+    .topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topo img {
+      height: 22mm;
+      object-fit: contain;
+      /* Imagens de placeholder para o teste */
+      filter: grayscale(1) opacity(0.3);
+    }
+    .info {
+      font-size: 14px;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 4px 0;
+      text-align: center;
+    }
+    .info span {
+      margin-right: 8px;
+    }
+    .codigo {
+      text-align: center;
+      font-weight: bold;
+      font-size: 11px; /* Reduzi um pouco para caber 44 digitos */
+      word-break: break-all;
+    }
+    .janela {
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .QRcode {
+      text-align: center;
+      margin: 4mm 0;
+    }
+    /* MUDANÇA: O div que vai receber o QR code */
+    #qrcode-container {
+      width: 40mm;
+      height: 40mm;
+      margin: 0 auto;
+      border: 1px solid #eee;
+    }
+    .secao {
+      border-top: 1px solid #000;
+      padding-top: 2mm;
+      font-size: 12px;
+    }
+    .titulo {
+      background: #000;
+      color: #fff;
+      padding: 2px 6px;
+      font-weight: bold;
+      display: inline-block;
+      margin-bottom: 3px;
+      font-size: 12px;
+    }
+    .texto {
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="col-form">
+    <h2>Teste de Etiqueta (110x150mm)</h2>
+    
+    <div>
+      <label for="codigoVenda">Código da Venda:</label><br>
+      <input type="text" id="codigoVenda" placeholder="Digite o código da venda...">
+    </div>
+    
+    <div>
+      <label for="de">De:</label><br>
+      <input type="date" id="de">
+    </div>
+    
+    <div>
+      <label for="ate">Até:</label><br>
+      <input type="date" id="ate">
+    </div>
+    
+    <button id="btnTestar">Gerar Etiqueta de Teste</button>
+    
+    <h3>JSON Retornado:</h3>
+    <pre id="resultado">(Aguardando teste...)</pre>
+  </div>
+
+  <div class="col-preview">
+    <h3>Preview da Etiqueta:</h3>
+    <div id="etiqueta-wrapper">
+      <div id="etiqueta-container">(Aguardando dados...)</div>
+    </div>
+  </div>
+
+
+  <script>
+    // 1. Configure com suas chaves do Supabase
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // <-- Substitua
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // <-- Substitua
+    
+    // 2. Inicialize o cliente
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 3. Seleciona os elementos da página
+    const btnTestar = document.getElementById('btnTestar');
+    const inputCodigoVenda = document.getElementById('codigoVenda');
+    const inputDe = document.getElementById('de');
+    const inputAte = document.getElementById('ate');
+    const outputJSON = document.getElementById('resultado');
+    const etiquetaContainer = document.getElementById('etiqueta-container');
+
+    // 4. Define datas padrão (últimos 30 dias)
+    const hoje = new Date();
+    const dataFim = hoje.toISOString().split('T')[0];
+    hoje.setDate(hoje.getDate() - 30);
+    const dataIni = hoje.toISOString().split('T')[0];
+    inputDe.value = dataIni;
+    inputAte.value = dataFim;
+
+
+    // 5. NOVO: Função que constrói o HTML da ETIQUETA
+    function getHtmlDaEtiqueta(nfe, codigoVenda) {
+      const dest = nfe.destinatario;
+      const emit = nfe.emitente;
+
+      return `
+      <div class="etiqueta">
+        <div class="topo">
+          <img src="https://logodownload.org/wp-content/uploads/2014/09/neuvye-logo-0.png" alt="Marca">
+          <div class="QRcode_venda">
+            </div>
+          <img src="https://logospng.org/download/dhl/logo-dhl-2048.png" alt="Transportadora">
+        </div>
+
+        <div class="info">
+          <span><strong>Volume:</strong> 1/1</span> |
+          <span><strong>Nota fiscal:</strong> ${nfe.numero}</span> |
+          <span><strong>Venda:</strong> ${codigoVenda}</span>
+        </div>
+
+        <div class="codigo">${nfe.chave}</div>
+
+        <div class="QRcode">
+          <div id="qrcode-container"></div> 
+        </div>
+
+        <div class="secao">
+          <div class="titulo">DESTINATÁRIO</div>
+          <div class="texto">
+            ${dest.xNome}<br>
+            ${dest.ender.xLgr || ''}, ${dest.ender.nro || ''}
+            ${dest.ender.xCpl ? ' - ' + dest.ender.xCpl : ''}<br>
+            ${dest.ender.xBairro || ''}, ${dest.ender.xMun || ''}/${dest.ender.UF || ''} - ${dest.ender.CEP || ''}
+          </div>
+        </div>
+
+        <div class="secao">
+          <div class="titulo">REMETENTE</div>
+          <div class="texto">
+            ${emit.xNome}<br>
+            ${emit.ender.xLgr || ''}, ${emit.ender.nro || ''}<br>
+            ${emit.ender.xBairro || ''}<br>
+            ${emit.ender.xMun || ''}-${emit.ender.UF || ''} ${emit.ender.CEP || ''}
+          </div>
+        </div>
+        
+        <div class="janela">JANELA: TESTE</div>
+      </div>
+      `;
+    }
+
+    // 6. Adiciona o clique no botão (MODIFICADO)
+    btnTestar.addEventListener('click', async () => {
+      const codigoVenda = inputCodigoVenda.value; 
+      const de = inputDe.value;
+      const ate = inputAte.value;
+
+      if (!codigoVenda) {
+        outputJSON.textContent = "Erro: O Código da Venda é obrigatório.";
+        return;
+      }
+
+      outputJSON.textContent = "Invocando função... Aguarde...";
+      etiquetaContainer.innerHTML = "(Carregando...)";
+      btnTestar.disabled = true;
+
+      try {
+        // 7. Invoca a função
+        const { data, error } = await supabase.functions.invoke('get-nota-details', {
+          body: { codigoVenda: codigoVenda, de: de, ate: ate }
+        });
+
+        if (error) throw error; 
+
+        // 8. Sucesso! Mostra o JSON
+        outputJSON.textContent = JSON.stringify(data, null, 2);
+        
+        // 9. NOVO: Renderiza a Etiqueta
+        const htmlEtiqueta = getHtmlDaEtiqueta(data, codigoVenda);
+        etiquetaContainer.innerHTML = htmlEtiqueta;
+
+        // 10. NOVO: Gera o QR Code
+        const qrDiv = document.getElementById("qrcode-container");
+        if (qrDiv) {
+          qrDiv.innerHTML = ""; // Limpa o QR anterior
+          new QRCode(qrDiv, {
+            text: data.chave, // O texto do QR Code é a chave
+            width: 140, // Aprox 40mm
+            height: 140,
+            correctLevel : QRCode.CorrectLevel.L // Nível de correção
+          });
+        }
+
+      } catch (err) {
+        const errorMsg = err.context?.error?.message || err.message || JSON.stringify(err, null, 2);
+        outputJSON.textContent = "ERRO AO INVOCAR:\n" + errorMsg;
+        etiquetaContainer.innerHTML = `<span style="color: red;">Falha ao gerar preview.</span>`;
+      } finally {
+        btnTestar.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+</html>

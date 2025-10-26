@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conferência - Sistema de Envios</title>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+ /* Estilos do seu login.html */
+ body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem 0; }
+ .conferencia-container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 600px; }
+ h1 { color: #333; margin-bottom: 1.5rem; }
+ h2 { color: #555; margin-bottom: 1rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
+
+ /* Estilos da conferência */
+ #scanner {
+ width: 100%;
+ max-width: 500px;
+ margin: 0 auto;
+ border: 1px solid #ddd;
+ border-radius: 8px;
+ overflow: hidden;
+ }
+ 
+ .resultado-message {
+ color: #dc3545;
+ margin-top: 1rem;
+ min-height: 1.2em;
+ font-size: 1.1rem;
+ font-weight: bold;
+ }
+
+ #lista-conferencia {
+ text-align: left;
+ margin-top: 1rem;
+ }
+
+ .item-venda {
+ padding: 12px;
+ border: 1px solid #ddd;
+ margin-bottom: 8px;
+ border-radius: 5px;
+ display: flex;
+ align-items: center;
+ transition: background-color 0.3s;
+ }
+
+ .status {
+ display: inline-block;
+ width: 15px;
+ height: 15px;
+ border-radius: 50%;
+ margin-right: 12px;
+ flex-shrink: 0;
+ }
+
+ .pendente { background-color: orange; }
+ .concluido { background-color: #28a745; }
+
+ .item-venda span {
+ font-size: 0.9rem;
+ color: #666;
+ margin-left: auto;
+ }
+
+ /* ===== ESTILO PARA INPUT MANUAL (ADMIN) ===== */
+ #manual-input-container {
+ display: none; /* ESCONDIDO POR PADRÃO */
+ margin-top: 1.5rem;
+ border-top: 1px solid #eee;
+ padding-top: 1.5rem;
+ text-align: left;
+ }
+ #manual-input-container label {
+ display: block;
+ margin-bottom: 0.5rem;
+ color: #555;
+ }
+ #manual-qrcode {
+ width: 100%;
+ padding: 0.8rem;
+ border: 1px solid #ddd;
+ border-radius: 5px;
+ box-sizing: border-box; 
+ }
+ #manual-submit {
+ width: 100%;
+ padding: 0.9rem;
+ background-color: #6c757d; /* Cinza Admin */
+ color: white;
+ border: none;
+ border-radius: 5px;
+ font-size: 1rem;
+ font-weight: bold;
+ cursor: pointer;
+ transition: background-color 0.2s;
+ margin-top: 0.5rem; 
+ }
+ #manual-submit:hover {
+ background-color: #5a6268;
+ }
+ 
+  /* ===== NOVO ESTILO PARA BOTÃO RESET (ADMIN) ===== */
+  #reset-lote-btn {
+ 	 width: 100%;
+ 	 padding: 0.9rem;
+ 	 background-color: #dc3545; /* Vermelho Perigo */
+ 	 color: white;
+ 	 border: none;
+ 	 border-radius: 5px;
+ 	 font-size: 1rem;
+ 	 font-weight: bold;
+ 	 cursor: pointer;
+ 	 transition: background-color 0.2s;
+ 	 margin-top: 0.5rem;
+  }
+  #reset-lote-btn:hover {
+ 	 background-color: #c82333;
+  }
+
+  /* ===== NOVO ESTILO PARA BOTÃO ROMANEIO (GERAL) ===== */
+  #gerar-romaneio-btn {
+ 	 width: 100%;
+ 	 padding: 0.9rem;
+ 	 background-color: #007bff; /* Azul Primário */
+ 	 color: white;
+ 	 border: none;
+ 	 border-radius: 5px;
+ 	 font-size: 1rem;
+ 	 font-weight: bold;
+ 	 cursor: pointer;
+ 	 transition: background-color 0.2s;
+  }
+  #gerar-romaneio-btn:hover {
+ 	 background-color: #0056b3;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="conferencia-container">
+ <h1>Conferência de Lote</h1>
+ 
+ <div id="scanner"></div>
+ <div id="resultado" class="resultado-message"></div>
+
+ <div id="manual-input-container">
+ <label for="manual-qrcode">Entrada Manual (Admin)</label>
+ <input type="text" id="manual-qrcode" placeholder="Digite o QR Code..."/>
+ <button id="manual-submit">Conferir Manualmente</button>
+ 	
+  <button id="reset-lote-btn">Resetar Lote</button>
+
+ </div>
+ <h2>Lista de Conferência (Realtime)</h2>
+
+  <div id="romaneio-container" style="margin-bottom: 1rem;"></div>
+
+ <div id="lista-conferencia">Carregando lista...</div>
+</div>
+
+<script type="module">
+ // 2. Importar o Supabase-JS (como no seu login)
+ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+ // === CONFIGURAÇÃO ===
+ const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+ const urlParams = new URLSearchParams(window.location.search);
+ const LOTE_ID_PARA_TESTAR = urlParams.get('lote_id'); 
+ 
+ if (!LOTE_ID_PARA_TESTAR) {
+ alert("ID do Lote não encontrado! Retornando para a seleção.");
+ window.location.href = '/selecao-lote.html'; 
+ }
+ // =============================================
+
+ // 4. Referências dos Elementos
+ const divLista = document.getElementById('lista-conferencia');
+ const divResultado = document.getElementById('resultado');
+ const manualInputContainer = document.getElementById('manual-input-container');
+ const manualInput = document.getElementById('manual-qrcode');
+ const manualSubmit = document.getElementById('manual-submit');
+ const romaneioContainer = document.getElementById('romaneio-container');
+ 
+ // ===== FUNÇÃO renderizarLista() ATUALIZADA =====
+ async function renderizarLista() {
+  divLista.innerHTML = "Atualizando...";
+  romaneioContainer.innerHTML = ""; // Limpa o botão
+  
+  const { data, error } = await supabase.rpc('get_status_conferencia_lote', {
+    p_lote_id: LOTE_ID_PARA_TESTAR
+  });
+  
+  // Código de erro e lista vazia (igual ao que você já tinha)
+  if (error) { 
+    divLista.innerHTML = `Erro ao buscar lista: ${error.message}`;
+    return;
+  }
+  if (!data || data.length === 0) { 
+    divLista.innerHTML = "Nenhum item encontrado para este lote. (Pode já ter sido conferido)";
+    return;
+  }
+
+  let html = '';
+  let todosConcluidos = true;
+
+  for (const item of data) {
+    const isConcluido = item.volumes_conferidos === item.volumes_totais;
+    if (!isConcluido) {
+      todosConcluidos = false;
+    }
+    // Código de montar o HTML da lista (igual ao que você já tinha)
+    const statusClass = isConcluido ? 'concluido' : 'pendente';
+    const statusDot = `<span class="status ${statusClass}"></span>`;
+    
+    if (isConcluido) {
+        html += `<div class="item-venda" style="background-color: #f0fff4;">`;
+    } else {
+        html += `<div class="item-venda">`;
+    }
+
+    html += `
+        ${statusDot}
+        <strong>${item.venda_numero_display}</strong> 
+        (${item.cliente_nome_display || 'Cliente'})
+        <span>${item.volumes_conferidos} / ${item.volumes_totais}</span>
+    </div>
+    `;
+  }
+  divLista.innerHTML = html;
+
+  // Lógica ATUALIZADA para chamar a NOVA função de romaneio
+  if (todosConcluidos && data.length > 0) {
+    romaneioContainer.innerHTML = `
+      <p style="color: #28a745; font-weight: bold;">Todos os itens conferidos!</p>
+      <button id="gerar-romaneio-btn">
+        Gerar Romaneio
+      </button>
+    `;
+    
+    // ATUALIZAÇÃO IMPORTANTE AQUI no onclick
+    document.getElementById('gerar-romaneio-btn').onclick = async () => {
+      const btn = document.getElementById('gerar-romaneio-btn');
+      btn.disabled = true;
+      btn.innerText = 'Gerando...';
+
+      try {
+        // Chama a NOVA função via fetch
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/gerar-romaneio-lote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}` // Usa a chave Anon
+          },
+          body: JSON.stringify({ lote_id: LOTE_ID_PARA_TESTAR })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Erro ${response.status}`);
+        }
+
+        // Pega o HTML retornado
+        const htmlRomaneio = await response.text();
+
+        // Abre o HTML em uma nova aba
+        const blob = new Blob([htmlRomaneio], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        URL.revokeObjectURL(url); // Libera a memória
+
+        btn.innerText = 'Romaneio Gerado!'; // Feedback visual
+
+      } catch (err) {
+        console.error("Erro ao gerar romaneio:", err);
+        alert(`Erro ao gerar romaneio: ${err.message}`);
+        btn.disabled = false;
+        btn.innerText = 'Gerar Romaneio';
+      }
+    };
+  }
+ }
+ // ===== FIM DA FUNÇÃO renderizarLista() =====
+
+ // 6. Função onScanSuccess (NENHUMA MUDANÇA AQUI)
+ async function onScanSuccess(qrCodeLido, decodedResult) {
+ divResultado.style.color = '#007bff'; 
+ divResultado.innerHTML = `Lido: ${qrCodeLido}. Processando...`;
+
+ try {
+  const response = await fetch('https://nfsuisftzddegihyhoha.supabase.co/functions/v1/conferir-volume', {
+  method: 'POST',
+  headers: { 
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+  },
+  body: JSON.stringify({
+  qr_code: qrCodeLido,
+  lote_id: LOTE_ID_PARA_TESTAR
+  })
+  });
+  
+  const result = await response.json();
+
+  if (response.ok) {
+  divResultado.style.color = '#28a745'; 
+  divResultado.innerHTML = `SUCESSO: ${result.message}`;
+  } else {
+  divResultado.style.color = '#dc3545'; 
+  divResultado.innerHTML = `ERRO: ${result.message}`;
+  }
+
+ } catch (err) {
+  divResultado.style.color = '#dc3545'; 
+  divResultado.innerHTML = `ERRO ao chamar API: ${err.message}`;
+ }
+ 
+ manualInput.value = '';
+ }
+ 
+ // 7. Função escutarRealtime (NENHUMA MUDANÇA AQUI)
+ function escutarRealtime() {
+  console.log("Iniciando 'escutarRealtime'...");
+  
+  const canal = supabase.channel('conferencia-db-changes'); 
+
+  canal.on('postgres_changes', 
+    { 
+      event: 'UPDATE', 
+      schema: 'public', 
+      table: 'volumes_conferencia'
+    },
+    (payload) => {
+      console.log('MUDANÇA RECEBIDA! (UPDATE)', payload);
+      renderizarLista(); 
+    }
+  )
+  .subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log('CONECTADO AO REALTIME! (Canal: conferencia-db-changes)');
+    } else {
+      console.error('FALHA AO CONECTAR AO REALTIME:', status);
+    }
+  });
+ }
+
+ // 8. FUNÇÃO DE CHECAR ADMIN (NENHUMA MUDANÇA AQUI)
+ async function checkUserRole() {
+ const { data: { session } } = await supabase.auth.getSession();
+ if (!session) {
+  console.log("Nenhuma sessão encontrada, redirecionando para login...");
+  window.location.href = '/login.html'; 
+  return;
+ }
+ 
+ const { data: profile, error } = await supabase
+  .from('profiles')
+  .select('role')
+  .eq('id', session.user.id)
+  .single();
+ 
+ if (error) {
+  console.warn("Aviso: Erro ao buscar perfil do usuário. Campo admin não será exibido.", error.message);
+  return; 
+ }
+
+ if (profile && profile.role === 'admin') {
+  console.log("Usuário é admin, mostrando campo manual.");
+  manualInputContainer.style.display = 'block';
+
+ 	 // LÓGICA DE CLIQUE DO RESET (ADMIN)
+ 	 document.getElementById('reset-lote-btn').onclick = async () => {
+ 	  if (!confirm('Tem certeza que deseja resetar este lote? Todos os volumes voltarão para "pendente".')) {
+ 	 	 return;
+ 	  }
+ 	  
+ 	  divResultado.style.color = '#007bff';
+ 	  divResultado.innerHTML = 'Resetando lote...';
+
+ 	  const { data, error } = await supabase.rpc('resetar_lote_conferencia', {
+ 	 	 p_lote_id: LOTE_ID_PARA_TESTAR
+ 	  });
+
+ 	  if (error) {
+ 	 	 divResultado.style.color = '#dc3545';
+ 	 	 divResultado.innerHTML = `Erro ao resetar: ${error.message}`;
+ 	  } else {
+ 	 	 divResultado.style.color = '#28a745';
+ 	 	 divResultado.innerHTML = data; 
+ 	 	 renderizarLista(); 
+ 	  }
+ 	 };
+ }
+ }
+
+ // 9. Botão de Submit Manual (NENHUMA MUDANÇA AQUI)
+ manualSubmit.onclick = () => {
+ const qrCodeManual = manualInput.value.trim();
+ if (qrCodeManual) {
+  onScanSuccess(qrCodeManual, null); 
+ } else {
+  divResultado.style.color = '#dc3545';
+  divResultado.innerHTML = `ERRO: Campo manual está vazio.`;
+ }
+ };
+ 
+ manualInput.addEventListener('keydown', (e) => {
+ if (e.key === 'Enter') {
+  e.preventDefault(); 
+  manualSubmit.click();
+ }
+ });
+
+ // 10. Inicializar o Scanner (NENHUMA MUDANÇA AQUI)
+ const html5QrCode = new Html5Qrcode("scanner");
+ html5QrCode.start(
+ { facingMode: "environment" },
+ {
+  fps: 5,
+  qrbox: (viewfinderWidth, viewfinderHeight) => {
+  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+  const qrBoxSize = Math.floor(minEdge * 0.7);
+  return { width: qrBoxSize, height: qrBoxSize };
+  }
+ },
+ onScanSuccess,
+ (errorMessage) => { /* ignora erros de scan */ }
+ ).catch(err => {
+ document.getElementById("scanner").innerHTML = "Erro ao iniciar a câmera: " + err.message;
+ });
+
+ // 11. Iniciar tudo (NENHUMA MUDANÇA AQUI)
+ checkUserRole(); 
+ renderizarLista(); 
+ escutarRealtime(); 
+
+</script>
+</body>
+</html>
