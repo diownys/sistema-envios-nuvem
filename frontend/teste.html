@@ -6,72 +6,28 @@
     <title>Buscador e Impressor de Vendas PharmUp</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
-        /* CSS Básico para ficar bonito */
+        /* CSS Básico da PÁGINA DE TESTE (não da impressão) */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 20px;
             background-color: #f4f4f9;
             color: #333;
         }
-        h1 {
-            color: #333;
-        }
-        #busca-container {
-            margin-bottom: 20px;
-        }
-        #codigoVendaInput {
-            font-size: 16px;
-            padding: 10px;
-            width: 300px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        button { /* Estilo base para botões */
-            font-size: 16px;
-            padding: 10px 15px;
-            cursor: pointer;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            margin-left: 5px;
-        }
-        #buscarBtn {
-            background-color: #0070f3; /* Azul */
-        }
-        #imprimirBtn {
-            background-color: #1a7f37; /* Verde */
-        }
-        button:disabled {
-            background-color: #aaa;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 15px;
-            font-size: 1.1em;
-            font-weight: bold;
-        }
-        .sucesso {
-            color: #008a20; /* Verde */
-        }
-        .erro {
-            color: #d93025; /* Vermelho */
-        }
-        /* Área de visualização do JSON */
-        pre {
-            background-color: #2d2d2d;
-            color: #f8f8f2;
-            padding: 20px;
-            border-radius: 8px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            margin-top: 10px;
-        }
-        code {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 14px;
-        }
+        h1 { color: #333; }
+        #busca-container { margin-bottom: 20px; }
+        #codigoVendaInput { font-size: 16px; padding: 10px; width: 300px; border: 1px solid #ddd; border-radius: 5px; }
+        button { font-size: 16px; padding: 10px 15px; cursor: pointer; color: white; border: none; border-radius: 5px; margin-left: 5px; }
+        #buscarBtn { background-color: #0070f3; }
+        #imprimirBtn { background-color: #1a7f37; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        #status { margin-top: 15px; font-size: 1.1em; font-weight: bold; }
+        .sucesso { color: #008a20; }
+        .erro { color: #d93025; }
+        pre { background-color: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; margin-top: 10px; }
+        code { font-family: "Courier New", Courier, monospace; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -96,86 +52,85 @@
         // --- Inicializa o cliente ---
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- Pegando os elementos do HTML ---
+        // --- Elementos do HTML ---
         const input = document.getElementById('codigoVendaInput');
         const buscarBtn = document.getElementById('buscarBtn');
-        const imprimirBtn = document.getElementById('imprimirBtn'); // Novo
+        const imprimirBtn = document.getElementById('imprimirBtn');
         const statusEl = document.getElementById('status');
         const resultadoEl = document.getElementById('jsonResultado');
 
-        // --- Variável para guardar os dados da venda buscada ---
-        let dadosVendaAtual = null; // Novo
+        // --- Guarda dados da venda buscada ---
+        let dadosVendaAtual = null;
 
-        // --- Adiciona os "escutadores" de evento ---
+        // --- Event Listeners ---
         buscarBtn.addEventListener('click', buscarVenda);
-        imprimirBtn.addEventListener('click', imprimirVenda); // Novo
+        imprimirBtn.addEventListener('click', imprimirVenda);
         input.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                buscarVenda();
-            }
+            if (event.key === 'Enter') buscarVenda();
         });
 
-        // --- Função para buscar a venda (com modificações) ---
+        // --- Função BUSCAR VENDA (sem mudanças na lógica de busca) ---
         async function buscarVenda() {
             const codigo = input.value.trim();
-
             if (!codigo) {
                 statusEl.textContent = 'Por favor, digite um código de venda.';
                 statusEl.className = 'erro';
-                dadosVendaAtual = null; // Limpa dados antigos
-                imprimirBtn.disabled = true; // Desabilita imprimir
+                dadosVendaAtual = null;
+                imprimirBtn.disabled = true;
                 return;
             }
 
-            // UI de carregamento
             statusEl.textContent = 'Invocando função... ⏳';
             statusEl.className = '';
             resultadoEl.textContent = '';
             buscarBtn.disabled = true;
-            imprimirBtn.disabled = true; // Desabilita imprimir durante busca
-            dadosVendaAtual = null; // Limpa dados antigos
+            imprimirBtn.disabled = true;
+            dadosVendaAtual = null;
 
             try {
                 const { data, error } = await supabase.functions.invoke('buscador-vendas', {
                     body: { codigoVenda: codigo }
                 });
-
-                if (error) throw error; 
-
-                // --- SUCESSO! ---
+                if (error) throw error;
                 statusEl.textContent = 'Venda encontrada com sucesso! ✅';
                 statusEl.className = 'sucesso';
                 resultadoEl.textContent = JSON.stringify(data, null, 2);
-                dadosVendaAtual = data; // Guarda os dados para impressão
-                imprimirBtn.disabled = false; // Habilita o botão de imprimir
-
+                dadosVendaAtual = data;
+                imprimirBtn.disabled = false;
             } catch (err) {
-                // --- FALHA! ---
                 console.error('Erro ao invocar função:', err);
                 const errorMsg = err.context?.error?.message || err.message || JSON.stringify(err, null, 2);
                 statusEl.textContent = `Erro: ${errorMsg}`;
                 statusEl.className = 'erro';
                 resultadoEl.textContent = 'Falha ao buscar dados.';
-                // dadosVendaAtual já está null
-                // imprimirBtn já está disabled
-
             } finally {
-                // Sempre reabilita o botão de busca
                 buscarBtn.disabled = false;
             }
         }
 
-        // --- NOVO: Função para gerar o HTML de impressão ---
+        // --- Função GERAR HTML IMPRESSÃO (MODIFICADA) ---
         function gerarHtmlImpressao(dados) {
-            // Helper para pegar valor ou retornar string vazia
-            const v = (key) => dados[key] || '';
-            const e = (obj, key) => obj?.[key] || ''; // Para endereços
-
-             // Formatar Data/Hora atual (Exemplo: 26/10/2025, 16:33:32)
+            const v = (key) => dados[key] || ''; // Helper para valores
             const agora = new Date();
             const dataHoraAtual = agora.toLocaleDateString('pt-BR') + ', ' + agora.toLocaleTimeString('pt-BR');
 
-            // Gerar linhas da tabela de itens
+            // Pega o código do PRIMEIRO item para o QR Code
+            let qrCodeContent = '';
+            if (dados.itens && dados.itens.length > 0 && dados.itens[0]['ManipulacaoOrdem.Codigo']) {
+                 // Verifica se o código não é "0" antes de adicionar $M
+                const primeiroCodigo = dados.itens[0]['ManipulacaoOrdem.Codigo'];
+                if (primeiroCodigo && primeiroCodigo !== '0') {
+                    qrCodeContent = `${primeiroCodigo}$M`;
+                } else {
+                    qrCodeContent = ''; // Não gera QR se o código for 0 ou inválido
+                    console.warn("Primeiro item não tem código de manipulação válido para QR Code.");
+                }
+            } else {
+                console.warn("Não foi possível encontrar o código do primeiro item para o QR Code.");
+            }
+
+
+            // Gera linhas da tabela de itens
             let itensHtml = '';
             if (dados.itens && Array.isArray(dados.itens)) {
                 dados.itens.forEach(item => {
@@ -184,59 +139,64 @@
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Codigo'] || ''}</td>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Descricao'] || ''}</td>
                             <td></td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorUnitario'] || ''}</td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.DescontoPercentual'] || ''}</td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorTotal'] || ''}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold">${item['ValorUnitario'] || '0,00'}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold">${item['ManipulacaoOrdem.DescontoPercentual'] || '0,00'}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold">${item['ValorTotal'] || '0,00'}</td>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.TemProdutoRefrigerado'] || ''}</td>
                         </tr>
                     `;
                 });
             }
 
-            // Monta o HTML completo usando template literals
-            // Usei seu `body` como base e preenchi com os dados do JSON `dados`
+            // Monta o HTML completo
+            // Adicionei script QRCode.js e a lógica de geração dentro do HTML da janela
+            // Usei 'table-layout: fixed' e 'word-wrap: break-word' para tentar evitar estouro de texto
             return `
                 <!DOCTYPE html>
                 <html lang="pt-br">
                 <head>
                     <meta charset="UTF-8">
                     <title>Impressão Venda ${v('codigoVenda')}</title>
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script> 
                     <style> 
-                        body { margin: 0; padding: 0; font-family: sans-serif; } 
+                        body { margin: 0; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 10px; } 
                         fieldset { border: none; padding: 0; margin: 0; }
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-                        th, td { padding: 2px 4px; }
-                        #tableType2 thead th { border-bottom: 1px solid black; }
-                        #tableType2 tbody tr td { border-bottom: 1px dashed lightgray; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; table-layout: fixed; /* Ajuda a controlar largura */ }
+                        th, td { padding: 1px 3px; vertical-align: top; word-wrap: break-word; /* Quebra palavras longas */ }
+                        .header-table td, .header-table th { padding-bottom: 5px; }
+                        #tableType2 thead th { border-bottom: 1px solid black; text-align: left; }
+                        #tableType2 tbody tr td { border-bottom: 1px dashed lightgray; padding-top: 2px; padding-bottom: 2px; }
+                        #tableType2 th:nth-child(4), #tableType2 td:nth-child(4), /* R$ Unit */
+                        #tableType2 th:nth-child(5), #tableType2 td:nth-child(5), /* % Dsc */
+                        #tableType2 th:nth-child(6), #tableType2 td:nth-child(6)  /* R$ Total */
+                         { text-align: right; }
+                         #qrcode-container { width: 80px; height: 80px; /* Ajuste o tamanho conforme necessário */ } 
+                         #qrcode-container img { width: 100%; height: 100%; } /* Faz a imagem do QR ocupar o div */
                     </style>
                 </head>
-                <body style="margin: 0; padding: 0;" onload="setTimeout(window.print, 500); /*setTimeout(window.close, 1000);*/"> 
+                <body onload="gerarQRCodeEImprimir()"> 
                     <fieldset>
-                        <table id="tableType0">
-                            <tbody>
-                                <tr><th style="text-align:right;font-size: 10px;" colspan="3">${dataHoraAtual}</th></tr>
-                            </tbody>
-                        </table>
-                        <table id="tableType0">
-                            <tbody>
+                        <table id="tableType0" class="header-table"> <tbody>
                                 <tr>
-                                    <td style="font-size:10px;color:black; background-color:white;text-align:left;">
-                                        <img style="height: 100px; width: 100px" src="data:image/png;base64,Qk2OLQAAAAAAAD4AAAAoAAAAIgEAACIBAAABAAEAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAAAAAAAP///wD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA//////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA/////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD///////////////////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA//////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wA/////AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AP////wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wA/////AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AP////wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP///////////////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAA==">
+                                    <td style="width: 80px; vertical-align: top;">
+                                         ${qrCodeContent ? '<div id="qrcode-container"></div>' : ''}
                                     </td>
+                                    <td style="vertical-align: top;">
+                                        <table style="margin-bottom: 0;"> <tbody>
+                                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Código da venda: ${v('codigoVenda')}</td></tr>
+                                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
+                                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Vendedor: ${v('Usuario.Nome')}</td></tr>
+                                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Emissão: ${v('DataAprovacao')}</td></tr>
+                                             </tbody>
+                                        </table>
+                                    </td>
+                                     <td style="width: 120px; text-align:right; font-size: 10px; vertical-align: top;">${dataHoraAtual}</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <table id="tableType0">
-                            <tbody>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Código da venda: ${v('codigoVenda')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Vendedor: ${v('Usuario.Nome')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Emissão: ${v('DataAprovacao')}</td></tr>
-                            </tbody>
-                        </table>
-                        <table id="tableType0">
-                            <tbody>
-                                <tr><th style="text-align: center; font-size: 10px;" colspan="2">Dados do cliente</th></tr>
+                       
+                        <table id="tableType0"> <tbody>
+                                <tr><th style="text-align: center; font-size: 10px; padding-top: 10px;" colspan="2">Dados do cliente</th></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Cód Cliente: ${v('Cliente.Id')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Nome: ${v('Cliente.Nome')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CPF/CNPJ: ${v('Cliente.Cpf') || v('Cliente.Cnpj') || ''}</td></tr>
@@ -251,64 +211,87 @@
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CEP: ${v('EnderecoEntrega.Cep')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Data: ${v('DataEntrega')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Local de Entrega: ${v('LocalEntrega.Descricao')}</td></tr>
-                                <tr><td style="font-size:10px;color:white; background-color:white;text-align:left;" colspan="2">|: </td></tr>
-                            </tbody>
+                                </tbody>
                         </table>
-                        <table id="tableType2">
-                            <thead>
-                                <tr><th colspan="7" style="font-size: 10px; text-align: center;">Itens</th></tr>
+                        
+                        <table id="tableType2"> <thead>
+                                <tr><th colspan="7" style="font-size: 10px; text-align: center; padding-top: 10px;">Itens</th></tr>
                                 <tr>
-                                    <th style="font-size: 10px; text-align: left;">Ordem</th>
-                                    <th style="font-size: 10px; text-align: left;">Descrição</th>
-                                    <th style="font-size: 10px;"></th>
-                                    <th style="font-size: 10px; text-align: right;">R$ Unit</th>
-                                    <th style="font-size: 10px; text-align: right;">% Dsc</th>
-                                    <th style="font-size: 10px; text-align: right;">R$ Total</th>
-                                    <th style="font-size: 10px; text-align: left;">Refrigerado?</th>
+                                    <th style="font-size: 10px;">Ordem</th>
+                                    <th style="font-size: 10px; width: 40%;">Descrição</th> <th style="font-size: 10px;"></th>
+                                    <th style="font-size: 10px;">R$ Unit</th>
+                                    <th style="font-size: 10px;">% Dsc</th>
+                                    <th style="font-size: 10px;">R$ Total</th>
+                                    <th style="font-size: 10px;">Refrigerado?</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${itensHtml}
                             </tbody>
                         </table>
-                        <table id="tableType0">
-                             <tbody>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Qtde Itens: ${v('QuantidadeTotalItens')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Desconto : ${v('DescontoPercentual')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Taxa de Entrega: ${v('TaxaEntrega')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Valor Venda: ${v('ValorFinal')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
-                             </tbody>
+
+                        <table id="tableType0"> <tbody>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Qtde Itens: ${v('QuantidadeTotalItens')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Desconto : ${v('DescontoPercentual')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Taxa de Entrega: ${v('TaxaEntrega')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Valor Venda: ${v('ValorFinal')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
+                                </tbody>
                         </table>
                     </fieldset>
+
+                    <script>
+                        function gerarQRCodeEImprimir() {
+                            const qrContent = "${qrCodeContent}"; // Conteúdo injetado pelo JS principal
+                            const qrDiv = document.getElementById('qrcode-container');
+                            
+                            if (qrDiv && qrContent) {
+                                try {
+                                    new QRCode(qrDiv, {
+                                        text: qrContent,
+                                        width: 80, // Deve ser igual ao CSS
+                                        height: 80, // Deve ser igual ao CSS
+                                        correctLevel : QRCode.CorrectLevel.L 
+                                    });
+                                } catch (e) {
+                                    console.error("Erro ao gerar QR Code:", e);
+                                    qrDiv.innerHTML = "Erro QR"; // Feedback visual
+                                }
+                            }
+                            
+                            // Aguarda um pouco para o QR Code renderizar e chama a impressão
+                            setTimeout(() => {
+                                try {
+                                    window.print();
+                                    // setTimeout(window.close, 1000); // Descomente se quiser fechar após imprimir
+                                } catch (e) {
+                                    console.error("Erro ao chamar window.print():", e);
+                                    alert("Erro ao tentar abrir a janela de impressão.");
+                                }
+                            }, 500); // 500ms de espera
+                        }
+                    <\/script> // Escapado para não quebrar o script principal
                 </body>
                 </html>
             `;
         }
 
 
-        // --- NOVO: Função para imprimir a venda ---
+        // --- Função IMPRIMIR VENDA (sem mudanças na lógica de abrir janela) ---
         function imprimirVenda() {
             if (!dadosVendaAtual) {
                 alert("Nenhum dado de venda para imprimir. Busque uma venda primeiro.");
                 return;
             }
-
-            // Gera o HTML formatado
             const htmlParaImprimir = gerarHtmlImpressao(dadosVendaAtual);
-
-            // Abre uma nova janela
             const printWindow = window.open('', '_blank', 'height=600,width=800');
 
             if (printWindow) {
-                // Escreve o HTML na nova janela
                 printWindow.document.write(htmlParaImprimir);
-                printWindow.document.close(); // Necessário para finalizar a escrita no DOM
-                
-                // O `onload` dentro do HTML da nova janela chamará window.print()
-                // printWindow.focus(); // Opcional: traz a janela para frente
+                printWindow.document.close();
+                // A impressão agora é chamada pelo onload da nova janela
             } else {
-                alert("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
+                alert("Não foi possível abrir a janela de impressão. Verifique bloqueador de pop-ups.");
             }
         }
     </script>
