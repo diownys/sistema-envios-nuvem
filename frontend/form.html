@@ -13,8 +13,7 @@
         .form-group.full-width { grid-column: 1 / -1; }
         label { font-weight: bold; margin-bottom: 0.5rem; }
         input, select { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        /* Estilo para campos somente leitura (usado na edição ou após a busca) */
-        input:read-only { background-color: #e9ecef; cursor: not-allowed;} 
+        input:read-only { background-color: #e9ecef; cursor: not-allowed;}
         .form-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; }
         .btn { padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 5px; color: white; border: none; cursor: pointer; font-size: 1rem; }
         .btn-save { background-color: #28a745; }
@@ -30,6 +29,14 @@
             display: inline-block; margin-left: 10px; vertical-align: middle;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Pequeno spinner para o campo UF */
+        .uf-loader {
+            border: 2px solid #f3f3f3; border-top: 2px solid #3498db;
+            border-radius: 50%; width: 12px; height: 12px;
+            animation: spin 1s linear infinite;
+            display: none; /* Começa escondido */
+            margin-left: 5px; vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -59,9 +66,13 @@
 
                 <div class="form-group"><label for="janela_coleta">Janela/Local de Coleta</label><input type="text" id="janela_coleta" name="janela_coleta" required></div>
 
-                <div class="form-group full-width"><label for="endereco">Endereço (Rua, Nº - Compl., Bairro)</label><input type="text" id="endereco" name="endereco"></div>
+                <div class="form-group full-width"><label for="endereco">Endereço (Rua, Nº - Compl., Bairro, CEP)</label><input type="text" id="endereco" name="endereco"></div>
                 <div class="form-group"><label for="cidade">Cidade</label><input type="text" id="cidade" name="cidade"></div>
-                <div class="form-group"><label for="uf">UF</label><input type="text" id="uf" name="uf" maxlength="2"></div>
+                <div class="form-group">
+                     <label for="uf">UF</label>
+                     <div> <input type="text" id="uf" name="uf" maxlength="2" style="width: 80px; display: inline-block;">
+                       <div id="uf-loader" class="loader uf-loader"></div> </div>
+                 </div>
             </div>
             <div class="form-actions">
                 <a href="/index.html" id="cancel-link" class="btn btn-cancel">Cancelar</a>
@@ -84,22 +95,24 @@
     const lookupStatus = document.getElementById('lookup-status');
     const codigoVendaInput = document.getElementById('codigo_venda');
     const buscarPharmUpBtn = document.getElementById('buscar-pharmup-btn');
+    const ufLoader = document.getElementById('uf-loader'); // Spinner da UF
 
     // Mapeamento dos campos JSON para IDs do formulário
     const fieldMapping = {
         'Cliente.Nome': 'cliente_nome',
-        'ValorFinal': 'valor_venda', // Necessita formatação , -> .
+        'ValorFinal': 'valor_venda',
         'LocalEntrega.Descricao': 'janela_coleta',
         'EnderecoEntrega.Cidade': 'cidade',
-        'EnderecoEntrega.UF': 'uf', // MUDANÇA: Adicionado UF
-        // Campos que precisam de tratamento especial:
-        'ordem_manipulacao': 'ordem_manipulacao', // Vem de itens[0]
-        'endereco': 'endereco', // Combinação de campos
+        // 'EnderecoEntrega.UF': 'uf', // UF será preenchida pela busca de CEP
+        // Campos especiais:
+        'ordem_manipulacao': 'ordem_manipulacao',
+        'endereco': 'endereco',
         'marca': 'marca'
     };
 
-    // Lista de IDs dos campos que serão preenchidos automaticamente
-    const autoFilledFields = ['ordem_manipulacao', 'cliente_nome', 'valor_venda', 'janela_coleta', 'endereco', 'cidade', 'uf'];
+    // Lista de IDs dos campos afetados pela busca automática
+    // (não necessariamente todos serão preenchidos, mas podem ser limpados ou ter estado alterado)
+    const autoAffectedFields = ['ordem_manipulacao', 'cliente_nome', 'valor_venda', 'janela_coleta', 'endereco', 'cidade', 'uf'];
 
 
     let editMode = false;
@@ -107,6 +120,7 @@
     let originalJanela = '';
 
     document.addEventListener('DOMContentLoaded', async () => {
+        // ... (lógica de autenticação e verificação de modo edição/adição - sem mudanças) ...
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = '/login.html'; return; }
 
@@ -114,58 +128,69 @@
         envioId = params.get('id');
 
         if (envioId) {
-            // MODO EDIÇÃO
             editMode = true;
             pageTitle.textContent = 'Editar Venda';
             codigoVendaInput.readOnly = true;
             buscarPharmUpBtn.style.display = 'none';
             lookupStatus.style.display = 'none';
-            await fetchAndPopulateForm(envioId); // Popula e marca como readonly
+            await fetchAndPopulateForm(envioId);
         } else {
-            // MODO ADIÇÃO
             editMode = false;
             pageTitle.textContent = 'Adicionar Nova Venda';
             document.getElementById('cancel-link').href = '/index.html';
-            buscarPharmUpBtn.addEventListener('click', handlePharmUpLookup); // Adiciona listener ao botão
-            // Campos começam editáveis por padrão (readOnly=false ou ausente no HTML)
+            buscarPharmUpBtn.addEventListener('click', handlePharmUpLookup);
+            // Garante que campos com readonly no HTML não fiquem assim na adição
+            autoAffectedFields.forEach(id => {
+               const element = document.getElementById(id);
+               if(element) element.readOnly = false;
+            });
         }
     });
 
-    // Função para carregar dados na EDIÇÃO
+    // Função para carregar dados na EDIÇÃO (marca campos como readonly)
     async function fetchAndPopulateForm(id) {
         try {
             const { data, error } = await supabase.functions.invoke('get-envio-by-id', { body: { id: parseInt(id) } });
             if (error) throw error;
             const envio = data.envio;
+            let fieldsToMakeReadOnly = []; // Guarda os campos que foram preenchidos
 
             for (const key in envio) {
                 const input = document.getElementById(key);
                 if (input) {
                     input.value = envio[key];
-                    // Marca campos como readonly QUANDO CARREGADOS DO BANCO (EDIÇÃO)
-                    // Exceto Volumes e Numero Nota que podem precisar ser alterados
-                    if (autoFilledFields.includes(key) || key === 'codigo_venda') {
-                        input.readOnly = true;
+                     // Marca campos como readonly QUANDO CARREGADOS DO BANCO (EDIÇÃO)
+                     if (autoAffectedFields.includes(key) || key === 'codigo_venda') {
+                        // Não marca volumes como readonly
+                        if (key !== 'volumes') {
+                             input.readOnly = true;
+                             fieldsToMakeReadOnly.push(key); // Adiciona à lista
+                        }
                     }
                 }
             }
-            // Trata campo 'marca' (select) separadamente
-              const marcaSelect = document.getElementById('marca');
-              if (marcaSelect && envio.marca) {
-                  marcaSelect.value = envio.marca;
-              }
+             const marcaSelect = document.getElementById('marca');
+             if (marcaSelect && envio.marca) {
+                 marcaSelect.value = envio.marca;
+                 // marcaSelect.disabled = true; // Desabilitar select na edição?
+             }
 
             pageTitle.textContent = `Editar Venda #${envio.codigo_venda}`;
             originalJanela = envio.janela_coleta;
             document.getElementById('cancel-link').href = `vendas.html?janela=${encodeURIComponent(originalJanela)}`;
+
+             // Guarda a lista de campos que foram marcados como readonly
+             form.dataset.readonlyFields = JSON.stringify(fieldsToMakeReadOnly);
 
         } catch (error) {
             alert(`Erro ao carregar dados da venda: ${error.message}`);
         }
     }
 
+
     // Função que lida com a busca no PharmUp
     async function handlePharmUpLookup() {
+        // ... (lógica inicial de pegar código, mostrar status, desabilitar - sem mudanças) ...
         const codigo = codigoVendaInput.value.trim();
         if (!codigo) {
             clearAutoFilledFields();
@@ -176,7 +201,7 @@
         lookupStatus.innerHTML = 'Buscando dados no PharmUp... <div class="loader"></div>';
         lookupStatus.className = 'message info';
         lookupStatus.style.display = 'block';
-        disableFormFieldsDuringLookup(true); // Desabilita campos durante a busca
+        disableFormFieldsDuringLookup(true);
 
         try {
             const { data, error } = await supabase.functions.invoke('buscador-vendas', {
@@ -191,7 +216,8 @@
                  }
             }
 
-            populateFormWithPharmUpData(data);
+            // MUDANÇA: Torna populateFormWithPharmUpData async para esperar a busca de CEP
+            await populateFormWithPharmUpData(data);
             lookupStatus.textContent = 'Dados carregados do PharmUp! Verifique e edite se necessário.';
             lookupStatus.className = 'message success';
 
@@ -199,19 +225,56 @@
             console.error('Erro na busca PharmUp:', err);
             lookupStatus.textContent = `Erro: ${err.message}`;
             lookupStatus.className = 'message error';
-            clearAutoFilledFields(); // Limpa campos em caso de erro
+            clearAutoFilledFields();
 
         } finally {
-            disableFormFieldsDuringLookup(false); // Reabilita campos (agora editáveis)
+            disableFormFieldsDuringLookup(false); // Reabilita campos (editáveis)
         }
     }
 
-    // Função que preenche o formulário com dados do JSON
-    function populateFormWithPharmUpData(data) {
-        // Limpa campos antes de preencher, garantindo que fiquem editáveis (readOnly=false)
-        clearAutoFilledFields(); 
+    // --- NOVA FUNÇÃO: Busca UF pelo CEP usando ViaCEP ---
+    async function fetchUfFromCep(cep) {
+        if (!cep) return null; // Retorna null se não houver CEP
+        const cleanCep = cep.replace(/\D/g, ''); // Remove traços, pontos, etc.
+        if (cleanCep.length !== 8) {
+            console.warn("CEP inválido para busca de UF:", cep);
+            return null; // CEP inválido
+        }
+
+        const ufInput = document.getElementById('uf');
+        ufLoader.style.display = 'inline-block'; // Mostra spinner da UF
+        if (ufInput) ufInput.disabled = true; // Desabilita campo UF durante busca
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+            if (!response.ok) {
+                throw new Error(`ViaCEP respondeu com status ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.erro) {
+                throw new Error(`CEP ${cep} não encontrado pelo ViaCEP.`);
+            }
+            return data.uf || null; // Retorna a UF ou null se não encontrar
+        } catch (error) {
+            console.error("Erro ao buscar UF pelo CEP:", error.message);
+            lookupStatus.textContent += ` (Aviso: Falha ao buscar UF para o CEP ${cep})`; // Adiciona aviso
+            lookupStatus.className = 'message success'; // Mantém sucesso, mas com aviso
+            return null; // Retorna null em caso de erro
+        } finally {
+             ufLoader.style.display = 'none'; // Esconde spinner da UF
+             if (ufInput) ufInput.disabled = false; // Reabilita campo UF
+        }
+    }
+
+
+    // Função que preenche o formulário (agora ASYNC)
+    async function populateFormWithPharmUpData(data) {
+        clearAutoFilledFields();
 
         for (const jsonKey in fieldMapping) {
+            // Não preenche UF diretamente aqui, será feito pela busca de CEP
+            if (jsonKey === 'EnderecoEntrega.UF') continue;
+
             const formId = fieldMapping[jsonKey];
             const element = document.getElementById(formId);
             if (element && data[jsonKey] !== undefined && data[jsonKey] !== null) {
@@ -224,56 +287,72 @@
                      }
                  }
                  else if (formId !== 'endereco' && formId !== 'ordem_manipulacao') {
-                     element.value = data[jsonKey];
+                    element.value = data[jsonKey];
                  }
+                 // NÃO adiciona readonly aqui
             }
         }
 
-        // Preenche Ordem de Manipulação
+        // Preenche Ordem de Manipulação com $M
         const ordemInput = document.getElementById('ordem_manipulacao');
         if (ordemInput) {
              const ordem = (data.itens && data.itens.length > 0) ? data.itens[0]['ManipulacaoOrdem.Codigo'] : null;
              if (ordem && ordem !== '0'){
-                 ordemInput.value = ordem;
+                 ordemInput.value = `${ordem}$M`; // MUDANÇA: Adiciona $M
              } else {
                  ordemInput.value = '';
              }
-             ordemInput.readOnly = false;
+             // ordemInput.readOnly = false; // Já é false por padrão
         }
 
-        // Preenche Endereço Combinado (Rua, Nº - Compl., Bairro)
+        // Preenche Endereço Combinado (incluindo Bairro e CEP)
         const enderecoInput = document.getElementById('endereco');
+        const cep = data['EnderecoEntrega.Cep'] || ''; // Pega o CEP
         if (enderecoInput) {
             const rua = data['EnderecoEntrega.Endereco'] || '';
             const num = data['EnderecoEntrega.Numero'] || '';
             const compl = data['EnderecoEntrega.Complemento'] || '';
-            const bairro = data['EnderecoEntrega.Bairro'] || ''; // Pega o bairro
+            const bairro = data['EnderecoEntrega.Bairro'] || '';
             let enderecoCompleto = rua;
             if (num) enderecoCompleto += `, ${num}`;
             if (compl) enderecoCompleto += ` - ${compl}`;
-            if (bairro) enderecoCompleto += `, ${bairro}`; // Adiciona o bairro
+            if (bairro) enderecoCompleto += `, ${bairro}`;
+            if (cep) enderecoCompleto += `, CEP: ${cep}`; // MUDANÇA: Adiciona CEP
             enderecoInput.value = enderecoCompleto.trim();
-            enderecoInput.readOnly = false; 
+            // enderecoInput.readOnly = false; // Já é false por padrão
+        }
+
+        // MUDANÇA: Chama a busca da UF pelo CEP
+        const ufInput = document.getElementById('uf');
+        if (ufInput) {
+            const ufEncontrada = await fetchUfFromCep(cep);
+            if (ufEncontrada) {
+                ufInput.value = ufEncontrada;
+            } else {
+                ufInput.value = ''; // Limpa se não encontrar ou der erro
+            }
+            // ufInput.readOnly = false; // Já é false por padrão
         }
     }
 
-    // Função que limpa os campos preenchidos automaticamente
+    // Função que limpa os campos preenchidos automaticamente (garante editabilidade)
     function clearAutoFilledFields() {
-          autoFilledFields.forEach(id => {
+         autoAffectedFields.forEach(id => {
              const element = document.getElementById(id);
              if(element) {
                  element.value = '';
-                 element.readOnly = false; // Garante que fiquem editáveis ao limpar
+                 element.readOnly = false; // Garante que fiquem editáveis
              }
-          });
+         });
+         // Volta a marca para o padrão Neuvye ao limpar
+         const marcaSelect = document.getElementById('marca');
+         if (marcaSelect) marcaSelect.value = 'Neuvye';
     }
 
-      // Função que desabilita/Reabilita campos DURANTE A BUSCA
+     // Função que desabilita/Reabilita campos DURANTE A BUSCA PharmUp
     function disableFormFieldsDuringLookup(disabled) {
-        // Desabilita APENAS o botão de busca, o campo código venda e o botão salvar
         buscarPharmUpBtn.disabled = disabled;
-        codigoVendaInput.disabled = disabled; 
-
+        codigoVendaInput.disabled = disabled;
         const saveButton = form.querySelector('button[type="submit"]');
         if (saveButton) saveButton.disabled = disabled;
     }
@@ -283,33 +362,29 @@
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        // No modo EDIÇÃO, habilita temporariamente os campos readonly para pegar os valores
+        // No modo EDIÇÃO, habilita temporariamente os campos que estavam readonly
+        let fieldsToReapplyReadonly = [];
         if (editMode) {
-             // Só mexe nos campos que DEVEM ser readonly na edição
-             autoFilledFields.forEach(id => {
+             fieldsToReapplyReadonly = JSON.parse(form.dataset.readonlyFields || '[]');
+             fieldsToReapplyReadonly.forEach(id => {
                  const element = document.getElementById(id);
-                 if (element && element.readOnly) element.readOnly = false; 
+                 if (element) element.readOnly = false;
              });
+             // Garante que o código de venda esteja habilitado para FormData
+             if (codigoVendaInput.readOnly) codigoVendaInput.readOnly = false;
         }
-        
-        // Garante que o campo de código de venda esteja habilitado, se estiver readonly (no modo edição)
-        if (codigoVendaInput.readOnly) codigoVendaInput.readOnly = false;
-
 
         const formData = new FormData(form);
         const dataObject = Object.fromEntries(formData.entries());
 
-        // Re-aplica `readOnly` e `disabled` (somente para Edição)
+        // Re-aplica `readOnly` e `disabled` (somente para Edição) se necessário
         if (editMode) {
-            // Re-aplica readonly para campos autoFilledFields
-             autoFilledFields.forEach(id => {
+             fieldsToReapplyReadonly.forEach(id => {
                  const element = document.getElementById(id);
                  if (element) element.readOnly = true;
              });
-             // Re-aplica readonly para codigo_venda
-             codigoVendaInput.readOnly = true;
+             codigoVendaInput.readOnly = true; // Sempre readonly na edição
         }
-
 
         let redirectUrl = '/index.html';
 
@@ -344,10 +419,10 @@
             alert(`Erro ao salvar: ${error.message}`);
              successMessage.style.display = 'none';
              form.querySelector('button[type="submit"]').disabled = false;
-             
+
              // Re-aplica `readOnly` para o caso de erro, garantindo o estado original na edição
              if (editMode) {
-                 autoFilledFields.forEach(id => {
+                fieldsToReapplyReadonly.forEach(id => {
                      const element = document.getElementById(id);
                      if (element) element.readOnly = true;
                  });
