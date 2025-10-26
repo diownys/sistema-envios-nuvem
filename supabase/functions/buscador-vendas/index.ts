@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
-// NÃO PRECISAMOS MAIS DO DOMParser! Removido.
 
 // --- Constantes do PharmUp ---
 const PHARMUP_USER = Deno.env.get('PHARMUP_USER')
@@ -13,134 +12,163 @@ const API_HEADERS = {
   "Referer": "https://pharmup-industria.azurewebsites.net/",
 }
 
-// --- Função de Login (Sem alterações) ---
+// --- Login ---
 async function getPharmUpToken(): Promise<string> {
   if (!PHARMUP_USER || !PHARMUP_PASS) {
-    throw new Error("Credenciais PHARMUP_USER ou PHARMUP_PASS não configuradas.");
+    throw new Error("Credenciais PHARMUP_USER ou PHARMUP_PASS não configuradas.")
   }
-  const url = `${API_BASE}/Login?login=${PHARMUP_USER}&senha=${PHARMUP_PASS}`
+  const url = `${API_BASE}/Login?login=${encodeURIComponent(PHARMUP_USER)}&senha=${encodeURIComponent(PHARMUP_PASS)}`
   const res = await fetch(url, { method: 'POST', headers: API_HEADERS })
-  if (!res.ok) throw new Error(`Falha no login PharmUp: ${res.statusText}`)
-  const data = await res.json()
-  if (!data.token) throw new Error("Login PharmUp OK, mas token não recebido.");
+  const text = await res.text()
+  let data: any
+  try { data = JSON.parse(text) } catch {
+    throw new Error(`Falha no login PharmUp: corpo inválido (${text.slice(0, 400)})`)
+  }
+  if (!res.ok) throw new Error(`Falha no login PharmUp (${res.status}): ${res.statusText} | body: ${text.slice(0, 400)}`)
+  if (!data.token) throw new Error("Login OK, mas 'token' não recebido.")
   return data.token
 }
 
-// --- NOVA FUNÇÃO: Parse do JSON de Impressão ---
-/**
- * Transforma o JSON complexo do "GetToPrint" em um objeto simples e útil.
- * Sabe lidar com campos normais (tipo 1) e grades de itens (tipo 2).
- */
+// --- Parse do JSON de impressão ---
 function parsePrintData(printData: any) {
-  const resultado: Record<string, any> = {};
-  
-  // Objeto temporário para agrupar itens pela 'linha' antes de virar array
-  const tempItens: Record<number, Record<string, any>> = {};
+  const resultado: Record<string, any> = {}
+  const tempItens: Record<number, Record<string, any>> = {}
 
-  if (!printData.sessoes || !Array.isArray(printData.sessoes)) {
-    throw new Error("Estrutura de dados de impressão inesperada. 'sessoes' não encontradas.");
+  if (!printData || !Array.isArray(printData.sessoes)) {
+    throw new Error("Estrutura inesperada do GetToPrint: 'sessoes' ausente.")
   }
 
   for (const sessao of printData.sessoes) {
-    if (!sessao.campos || !Array.isArray(sessao.campos)) continue;
+    if (!Array.isArray(sessao.campos)) continue
 
-    // Tipo 2 = É uma grade (ex: a sessão "Itens")
-    if (sessao.tipo === 2) {
+    if (sessao.tipo === 2) { // grade (itens)
       for (const campo of sessao.campos) {
-        const linha = campo.linha;
-        const key = campo.labelId; // ex: "Itens.ValorTotal"
-        const value = campo.labelValue;
-
-        if (linha && key) {
-          // Se é a primeira vez que vemos essa linha, cria um objeto para ela
-          if (!tempItens[linha]) {
-            tempItens[linha] = {};
-          }
-          // Limpa a chave (ex: "Itens.ValorTotal" vira "ValorTotal")
-          const simpleKey = key.replace(/^Itens\./, '');
-          tempItens[linha][simpleKey] = value || null;
+        const linha = campo.linha
+        const key = campo.labelId
+        const value = campo.labelValue
+        if (linha != null && key) {
+          if (!tempItens[linha]) tempItens[linha] = {}
+          const simpleKey = String(key).replace(/^Itens\./, '')
+          tempItens[linha][simpleKey] = value ?? null
         }
       }
-    }
-    // Tipo 1 = Campos normais (ex: "Dados do cliente")
-    else if (sessao.tipo === 1) {
+    } else if (sessao.tipo === 1) { // campos simples
       for (const campo of sessao.campos) {
-        if (campo.labelId) {
-          // Só adiciona se a chave ainda não existir (evita sobrescritas)
-          if (!resultado[campo.labelId]) {
-            resultado[campo.labelId] = campo.labelValue || null;
-          }
+        if (campo.labelId && resultado[campo.labelId] == null) {
+          resultado[campo.labelId] = campo.labelValue ?? null
         }
       }
     }
   }
 
-  // Converte o objeto de itens (agrupado por linha) em um array final
-  resultado.itens = Object.values(tempItens);
-  
-  return resultado;
+  resultado.itens = Object.values(tempItens)
+  return resultado
 }
 
+// --- Helper: fetch JSON com diagnóstico útil ---
+async function fetchJson(url: string, headers: Record<string, string>) {
+  const res = await fetch(url, { headers })
+  const raw = await res.text()
+  let json: any
+  try {
+    json = raw ? JSON.parse(raw) : null
+  } catch {
+    throw new Error(`Erro HTTP ${res.status} em ${url} | body: ${raw.slice(0, 500)}`)
+  }
+  if (!res.ok) {
+    throw new Error(`Erro HTTP ${res.status} em ${url}: ${res.statusText} | body: ${raw.slice(0, 500)}`)
+  }
+  return json
+}
 
-// --- Handler Principal (TOTALMENTE MODIFICADO) ---
+// --- Extrai lista de vendas, independente do "shape" ---
+function extrairListaVendas(listData: any): any[] {
+  if (Array.isArray(listData)) return listData
+  if (listData && Array.isArray(listData.list)) return listData.list
+  if (listData && Array.isArray(listData.items)) return listData.items
+  if (listData && Array.isArray(listData.data)) return listData.data
+  return []
+}
+
+// --- Handler ---
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  try {
-    // 1. MUDANÇA: Recebemos 'codigoVenda' (que é o filterKey, ex: "101152")
-    const { codigoVenda } = await req.json()
-    if (!codigoVenda) throw new Error("O 'codigoVenda' (filterKey) é obrigatório.");
+  const urlObj = new URL(req.url)
+  const debug = urlObj.searchParams.get('debug') === '1'
 
-    // 2. Autenticar no PharmUp (Igual)
+  try {
+    const { codigoVenda } = await req.json()
+    if (!codigoVenda) throw new Error("O 'codigoVenda' (filterKey) é obrigatório.")
+
     const token = await getPharmUpToken()
     const authHeaders = { ...API_HEADERS, 'Authorization': `Bearer ${token}` }
 
-    // 3. MUDANÇA: Passo 1 - Buscar na API /Venda/ListVendas
-    const listUrl = `${API_BASE}/Venda/ListVendas?filterKey=${codigoVenda}&sortKey=codigo&sortOrder=desc&pageIndex=1&pageSize=1`
+    // Monta URL com URLSearchParams (evita erros sutis de querystring)
+    const params = new URLSearchParams({
+      filterKey: String(codigoVenda),
+      sortKey: 'codigo',
+      sortOrder: 'desc',
+      pageIndex: '0', // 0 é mais comum como primeira página
+      pageSize: '5',
+    })
+    const listUrl = `${API_BASE}/Venda/ListVendas?${params.toString()}`
 
-    const listRes = await fetch(listUrl, { headers: authHeaders })
-    if (!listRes.ok) throw new Error(`Erro ao listar vendas (${listRes.status}): ${listRes.statusText}`)
+    const listData = await fetchJson(listUrl, authHeaders)
+    const lista = extrairListaVendas(listData)
 
-    const listData = await listRes.json()
-
-    // 4. MUDANÇA: Checar se o array de resultado veio vazio
-    if (!Array.isArray(listData) || listData.length === 0) {
-      throw new Error(`NENHUMA venda encontrada com o código/filterKey '${codigoVenda}'.`);
+    if (debug) {
+      console.log('[DEBUG] shape ListVendas keys:', Object.keys(listData || {}))
+      if (lista[0]) console.log('[DEBUG] first item keys:', Object.keys(lista[0]))
+      console.log('[DEBUG] total itens retornados:', lista.length)
     }
 
-    // 5. MUDANÇA: Pegar o 'id' da venda encontrada (ex: 1061849)
-    const vendaEncontrada = listData[0];
-    const vendaId = vendaEncontrada.id;
-    if (!vendaId) throw new Error("Venda encontrada, mas não foi possível extrair o 'id' dela.");
+    if (!lista.length) {
+      throw new Error(`NENHUMA venda encontrada com o código/filterKey '${codigoVenda}'.`)
+    }
 
-    // 6. MUDANÇA: Passo 2 - Buscar os dados de impressão (GetToPrint)
-    const modeloImpressaoId = 1714; // Fixo, como você pediu
-    const printUrl = `${API_BASE}/Venda/GetToPrint?id=${vendaId}&modeloImpressaoId=${modeloImpressaoId}`
+    // Tenta encontrar correspondência exata por 'codigo'; senão pega a primeira
+    const vendaEncontrada =
+      lista.find((v: any) => String(v.codigo) === String(codigoVenda)) ?? lista[0]
 
-    const printRes = await fetch(printUrl, { headers: authHeaders })
-    if (!printRes.ok) throw new Error(`Erro ao buscar dados de impressão (${printRes.status}): ${printRes.statusText}`)
-    
-    const printData = await printRes.json()
+    const vendaId =
+      vendaEncontrada?.id ??
+      vendaEncontrada?.vendaId ??
+      vendaEncontrada?.ID
 
-    // 7. MUDANÇA: Parsear o JSON de impressão para um formato limpo
+    if (!vendaId) {
+      const keys = vendaEncontrada ? Object.keys(vendaEncontrada) : []
+      throw new Error(`Venda encontrada, mas não foi possível extrair 'id'. Keys: [${keys.join(', ')}]`)
+    }
+
+    const modeloImpressaoId = 1714
+    const printParams = new URLSearchParams({
+      id: String(vendaId),
+      modeloImpressaoId: String(modeloImpressaoId),
+    })
+    const printUrl = `${API_BASE}/Venda/GetToPrint?${printParams.toString()}`
+
+    const printData = await fetchJson(printUrl, authHeaders)
     const dadosVendaFormatado = parsePrintData(printData)
-    
-    // Adiciona o ID e Codigo da Venda principal para referência
-    dadosVendaFormatado.idVenda = vendaId;
-    dadosVendaFormatado.codigoVenda = vendaEncontrada.codigo;
+    dadosVendaFormatado.idVenda = vendaId
+    dadosVendaFormatado.codigoVenda = vendaEncontrada?.codigo ?? codigoVenda
 
-    // 8. MUDANÇA: Retornar o JSON formatado
+    if (debug) {
+      console.log('[DEBUG] campos topo:', Object.keys(dadosVendaFormatado).slice(0, 20))
+      console.log('[DEBUG] itens (qtde):', Array.isArray(dadosVendaFormatado.itens) ? dadosVendaFormatado.itens.length : 0)
+    }
+
     return new Response(
       JSON.stringify(dadosVendaFormatado),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
-    console.error(error.message)
+  } catch (error: any) {
+    console.error(error?.message || error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error?.message || String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
