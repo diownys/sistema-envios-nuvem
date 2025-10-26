@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Vendas PharmUp</title>
+    <title>Buscador e Impressor de Vendas PharmUp</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -16,7 +16,7 @@
             color: #333;
         }
         h1 {
-            color: #333; 
+            color: #333;
         }
         #busca-container {
             margin-bottom: 20px;
@@ -28,17 +28,22 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
-        #buscarBtn {
+        button { /* Estilo base para botões */
             font-size: 16px;
             padding: 10px 15px;
             cursor: pointer;
-            background-color: #0070f3; /* Azul */
             color: white;
             border: none;
             border-radius: 5px;
             margin-left: 5px;
         }
-        #buscarBtn:disabled {
+        #buscarBtn {
+            background-color: #0070f3; /* Azul */
+        }
+        #imprimirBtn {
+            background-color: #1a7f37; /* Verde */
+        }
+        button:disabled {
             background-color: #aaa;
             cursor: not-allowed;
         }
@@ -59,7 +64,7 @@
             color: #f8f8f2;
             padding: 20px;
             border-radius: 8px;
-            overflow-x: auto; 
+            overflow-x: auto;
             white-space: pre-wrap;
             margin-top: 10px;
         }
@@ -71,11 +76,12 @@
 </head>
 <body>
 
-    <h1>Buscador de Vendas (PharmUp)</h1>
+    <h1>Buscador e Impressor de Vendas (PharmUp)</h1>
 
     <div id="busca-container">
         <input type="text" id="codigoVendaInput" placeholder="Digite o código da venda (ex: 101152)">
         <button id="buscarBtn">Buscar</button>
+        <button id="imprimirBtn" disabled>Imprimir</button>
     </div>
 
     <div id="status"></div>
@@ -83,72 +89,226 @@
     <pre><code id="jsonResultado">Aguardando busca...</code></pre>
 
     <script>
-        // --- 2. Configure com suas chaves do Supabase ---
-        // (Copiei as chaves do seu exemplo, elas são públicas)
+        // --- Chaves do Supabase ---
         const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
         
-        // --- 3. Inicialize o cliente ---
+        // --- Inicializa o cliente ---
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- 4. Pegando os elementos do HTML ---
+        // --- Pegando os elementos do HTML ---
         const input = document.getElementById('codigoVendaInput');
-        const btn = document.getElementById('buscarBtn');
+        const buscarBtn = document.getElementById('buscarBtn');
+        const imprimirBtn = document.getElementById('imprimirBtn'); // Novo
         const statusEl = document.getElementById('status');
         const resultadoEl = document.getElementById('jsonResultado');
 
-        // --- 5. Adiciona os "escutadores" de evento ---
-        btn.addEventListener('click', buscarVenda);
+        // --- Variável para guardar os dados da venda buscada ---
+        let dadosVendaAtual = null; // Novo
+
+        // --- Adiciona os "escutadores" de evento ---
+        buscarBtn.addEventListener('click', buscarVenda);
+        imprimirBtn.addEventListener('click', imprimirVenda); // Novo
         input.addEventListener('keyup', (event) => {
             if (event.key === 'Enter') {
                 buscarVenda();
             }
         });
 
-        // --- 6. A Função Principal (MODIFICADA) ---
+        // --- Função para buscar a venda (com modificações) ---
         async function buscarVenda() {
             const codigo = input.value.trim();
 
             if (!codigo) {
                 statusEl.textContent = 'Por favor, digite um código de venda.';
                 statusEl.className = 'erro';
+                dadosVendaAtual = null; // Limpa dados antigos
+                imprimirBtn.disabled = true; // Desabilita imprimir
                 return;
             }
 
-            // Atualiza a UI para "carregando"
+            // UI de carregamento
             statusEl.textContent = 'Invocando função... ⏳';
             statusEl.className = '';
             resultadoEl.textContent = '';
-            btn.disabled = true;
+            buscarBtn.disabled = true;
+            imprimirBtn.disabled = true; // Desabilita imprimir durante busca
+            dadosVendaAtual = null; // Limpa dados antigos
 
             try {
-                // --- MUDANÇA PRINCIPAL: Usando supabase.functions.invoke ---
-                // Chama a sua nova função 'buscador-vendas'
                 const { data, error } = await supabase.functions.invoke('buscador-vendas', {
                     body: { codigoVenda: codigo }
                 });
 
-                if (error) throw error; // Joga o erro para o catch
+                if (error) throw error; 
 
                 // --- SUCESSO! ---
                 statusEl.textContent = 'Venda encontrada com sucesso! ✅';
                 statusEl.className = 'sucesso';
-                // Formata o JSON para exibição "bonita"
                 resultadoEl.textContent = JSON.stringify(data, null, 2);
+                dadosVendaAtual = data; // Guarda os dados para impressão
+                imprimirBtn.disabled = false; // Habilita o botão de imprimir
 
             } catch (err) {
                 // --- FALHA! ---
                 console.error('Erro ao invocar função:', err);
-                // Pega a mensagem de erro de dentro do objeto de erro do Supabase
                 const errorMsg = err.context?.error?.message || err.message || JSON.stringify(err, null, 2);
-                
                 statusEl.textContent = `Erro: ${errorMsg}`;
                 statusEl.className = 'erro';
                 resultadoEl.textContent = 'Falha ao buscar dados.';
+                // dadosVendaAtual já está null
+                // imprimirBtn já está disabled
 
             } finally {
-                // Sempre reabilita o botão no final
-                btn.disabled = false;
+                // Sempre reabilita o botão de busca
+                buscarBtn.disabled = false;
+            }
+        }
+
+        // --- NOVO: Função para gerar o HTML de impressão ---
+        function gerarHtmlImpressao(dados) {
+            // Helper para pegar valor ou retornar string vazia
+            const v = (key) => dados[key] || '';
+            const e = (obj, key) => obj?.[key] || ''; // Para endereços
+
+             // Formatar Data/Hora atual (Exemplo: 26/10/2025, 16:33:32)
+            const agora = new Date();
+            const dataHoraAtual = agora.toLocaleDateString('pt-BR') + ', ' + agora.toLocaleTimeString('pt-BR');
+
+            // Gerar linhas da tabela de itens
+            let itensHtml = '';
+            if (dados.itens && Array.isArray(dados.itens)) {
+                dados.itens.forEach(item => {
+                    itensHtml += `
+                        <tr>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Codigo'] || ''}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Descricao'] || ''}</td>
+                            <td></td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorUnitario'] || ''}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.DescontoPercentual'] || ''}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorTotal'] || ''}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.TemProdutoRefrigerado'] || ''}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Monta o HTML completo usando template literals
+            // Usei seu `body` como base e preenchi com os dados do JSON `dados`
+            return `
+                <!DOCTYPE html>
+                <html lang="pt-br">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Impressão Venda ${v('codigoVenda')}</title>
+                    <style> 
+                        body { margin: 0; padding: 0; font-family: sans-serif; } 
+                        fieldset { border: none; padding: 0; margin: 0; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                        th, td { padding: 2px 4px; }
+                        #tableType2 thead th { border-bottom: 1px solid black; }
+                        #tableType2 tbody tr td { border-bottom: 1px dashed lightgray; }
+                    </style>
+                </head>
+                <body style="margin: 0; padding: 0;" onload="setTimeout(window.print, 500); /*setTimeout(window.close, 1000);*/"> 
+                    <fieldset>
+                        <table id="tableType0">
+                            <tbody>
+                                <tr><th style="text-align:right;font-size: 10px;" colspan="3">${dataHoraAtual}</th></tr>
+                            </tbody>
+                        </table>
+                        <table id="tableType0">
+                            <tbody>
+                                <tr>
+                                    <td style="font-size:10px;color:black; background-color:white;text-align:left;">
+                                        <img style="height: 100px; width: 100px" src="data:image/png;base64,Qk2OLQAAAAAAAD4AAAAoAAAAIgEAACIBAAABAAEAAAAAAAAAAADEDgAAxA4AAAAAAAAAAAAAAAAAAP///wD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA//////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AAAAAAAAAAAD////8AP/AAAP/AAAAAAAAAA//////////////////wAAAAAAAAAAA/////AD/wAAD/wAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wA/8AAA/8AAAAAAAAAD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA////////wA///wA///wA/8AAA/8AAA/8AP/////////////////8AP///////8AP//8AP//8AP/AAAP/AAAP/AD//////////////////AD////////AD///AD///AD/wAAD/wAAD/wA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/AD/wAAD/wA/8AAAAD/wAAD//////////////////AD/wAAAAP/AD/wA/8AAA/8AP/AAAAA/8AAA//////////////////wA/8AAAAD/wA/8AP/AAAP/AD/wAAAAP/AAAP/////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD/////////8AP/AD/wAAD/////////////////////wA/8AAAAD/wA//////////AD/wA/8AAA/////////////////////8AP/AAAAA/8AP/////////wA/8AP/AAAP/////////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA/8AAAAD/wA////////wAAD////8AAAAAAP/////////////////8AP/AAAAA/8AP///////8AAA/////AAAAAAD//////////////////AD/wAAAAP/AD////////AAAP////wAAAAAA//////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AP///////8AP/AD/wAAAAP/AD/wA///wA////////////////////AD////////AD/wA/8AAAAD/wA/8AP//8AP///////////////////wA////////wA/8AP/AAAAA/8AP/AD///AD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA////////////////////AAAAAAAAAAAD/wAAD///AD/wA///wAAAAP///////////////////wAAAAAAAAAAA/8AAA///wA/8AP//8AAAAD///////////////////8AAAAAAAAAAAP/AAAP//8AP/AD///AAAAA/////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD////////////////////////////////////////////8AP//8AAA/////////////////////////////////////////////AD///AAAP////////////////////////////////////////////wA///wAAD///////////////////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAA///wA/8AP//8AAA//////8AAAAAAAAAD//////////////////AAAP//8AP/AD///AAAP//////AAAAAAAAAA//////////////////wAAD///AD/wA///wAAD//////wAAAAAAAAAP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD//////////////////AAAAA/8AAA/8AP//8AP/AAAAAAD///AD/wA//////////////////wAAAAP/AAAP/AD///AD/wAAAAAA///wA/8AP/////////////////8AAAAD/wAAD/wA///wA/8AAAAAAP//8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA////////////////////AD/wAAD/wAAD/wAAAAP////wAAD/wA/8AP///////////////////wA/8AAA/8AAA/8AAAAD////8AAA/8AP/AD///////////////////8AP/AAAP/AAAP/AAAAA/////AAAP/AD/wA//////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////8AAA/////AD/wAAAAP//////AAAP/AD/wA////////////////////AAAP////wA/8AAAAD//////wAAD/wA/8AP///////////////////wAAD////8AP/AAAAA//////8AAA/8AP/AD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA///////////////////////wA///wAAAAAAAAAP/AAAP/AAAAAAAAP//////////////////////8AP//8AAAAAAAAAD/wAAD/wAAAAAAAD///////////////////////AD///AAAAAAAAAA/8AAA/8AAAAAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP/AD/wA/8AP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD/wA/8AP/AD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/8AP/AD/wA/8AAAAAAAAAAAP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD////////AD/wAAD///AD/wA////////wA//////////////////wA////////wA/8AAA///wA/8AP///////8AP/////////////////8AP///////8AP/AAAP//8AP/AD////////AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAD/wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAA/8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAP/AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AAAAAAD///AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wAAAAAA///wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AAAAAAP//8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wA/////AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AP////wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD/wAAAAP/AD/wA/////AD/wA/8AAAAD/wA//////////////////wA/8AAAAD/wA/8AP////wA/8AP/AAAAA/8AP/////////////////8AP/AAAAA/8AP/AD////8AP/AD/wAAAAP/AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wA////////wA/8AAAAD////8AP///////8AP/////////////////8AP///////8AP/AAAAA/////AD////////AD//////////////////AD////////AD/wAAAAP////wA////////wA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP/////////////////8AAAAAAAAAAAP////wAAAAP/AAAAAAAAAAAD//////////////////AAAAAAAAAAAD////8AAAAD/wAAAAAAAAAAA//////////////////wAAAAAAAAAAA/////AAAAA/8AAAAAAAAAAAP///////////////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAP///////////////////////////////////////////////8AAAAD////////////////////////////////////////////////AAAAA////////////////////////////////////////////////wAAAAA==">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table id="tableType0">
+                            <tbody>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Código da venda: ${v('codigoVenda')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Vendedor: ${v('Usuario.Nome')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Emissão: ${v('DataAprovacao')}</td></tr>
+                            </tbody>
+                        </table>
+                        <table id="tableType0">
+                            <tbody>
+                                <tr><th style="text-align: center; font-size: 10px;" colspan="2">Dados do cliente</th></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Cód Cliente: ${v('Cliente.Id')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Nome: ${v('Cliente.Nome')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CPF/CNPJ: ${v('Cliente.Cpf') || v('Cliente.Cnpj') || ''}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Celular: ${v('Cliente.Celular')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Telefone: ${v('Cliente.Telefone')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">E-mail: ${v('Cliente.Email')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Endereço: ${v('EnderecoEntrega.Endereco')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Número: ${v('EnderecoEntrega.Numero')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Complemento: ${v('EnderecoEntrega.Complemento')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Bairro: ${v('EnderecoEntrega.Bairro')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Cidade: ${v('EnderecoEntrega.Cidade')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CEP: ${v('EnderecoEntrega.Cep')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Data: ${v('DataEntrega')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Local de Entrega: ${v('LocalEntrega.Descricao')}</td></tr>
+                                <tr><td style="font-size:10px;color:white; background-color:white;text-align:left;" colspan="2">|: </td></tr>
+                            </tbody>
+                        </table>
+                        <table id="tableType2">
+                            <thead>
+                                <tr><th colspan="7" style="font-size: 10px; text-align: center;">Itens</th></tr>
+                                <tr>
+                                    <th style="font-size: 10px; text-align: left;">Ordem</th>
+                                    <th style="font-size: 10px; text-align: left;">Descrição</th>
+                                    <th style="font-size: 10px;"></th>
+                                    <th style="font-size: 10px; text-align: right;">R$ Unit</th>
+                                    <th style="font-size: 10px; text-align: right;">% Dsc</th>
+                                    <th style="font-size: 10px; text-align: right;">R$ Total</th>
+                                    <th style="font-size: 10px; text-align: left;">Refrigerado?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itensHtml}
+                            </tbody>
+                        </table>
+                        <table id="tableType0">
+                             <tbody>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Qtde Itens: ${v('QuantidadeTotalItens')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Desconto : ${v('DescontoPercentual')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Taxa de Entrega: ${v('TaxaEntrega')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Valor Venda: ${v('ValorFinal')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                             </tbody>
+                        </table>
+                    </fieldset>
+                </body>
+                </html>
+            `;
+        }
+
+
+        // --- NOVO: Função para imprimir a venda ---
+        function imprimirVenda() {
+            if (!dadosVendaAtual) {
+                alert("Nenhum dado de venda para imprimir. Busque uma venda primeiro.");
+                return;
+            }
+
+            // Gera o HTML formatado
+            const htmlParaImprimir = gerarHtmlImpressao(dadosVendaAtual);
+
+            // Abre uma nova janela
+            const printWindow = window.open('', '_blank', 'height=600,width=800');
+
+            if (printWindow) {
+                // Escreve o HTML na nova janela
+                printWindow.document.write(htmlParaImprimir);
+                printWindow.document.close(); // Necessário para finalizar a escrita no DOM
+                
+                // O `onload` dentro do HTML da nova janela chamará window.print()
+                // printWindow.focus(); // Opcional: traz a janela para frente
+            } else {
+                alert("Não foi possível abrir a janela de impressão. Verifique se o seu navegador está bloqueando pop-ups.");
             }
         }
     </script>
