@@ -13,7 +13,8 @@
         .form-group.full-width { grid-column: 1 / -1; }
         label { font-weight: bold; margin-bottom: 0.5rem; }
         input, select { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        input:read-only { background-color: #e9ecef; cursor: not-allowed;} /* Estilo para campos preenchidos */
+        /* Estilo para campos somente leitura (usado na edição ou após a busca) */
+        input:read-only { background-color: #e9ecef; cursor: not-allowed;} 
         .form-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; }
         .btn { padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 5px; color: white; border: none; cursor: pointer; font-size: 1rem; }
         .btn-save { background-color: #28a745; }
@@ -22,8 +23,6 @@
         .message.success { color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb;}
         .message.error { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb;}
         .message.info { color: #0c5460; background-color: #d1ecf1; border: 1px solid #bee5eb;}
-
-        /* Estilo para loading spinner (opcional) */
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #3498db;
             border-radius: 50%; width: 20px; height: 20px;
@@ -47,22 +46,22 @@
                         <option value="DrogaVET">DrogaVET</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="codigo_venda">Código da Venda (PharmUp)</label>
                     <input type="text" id="codigo_venda" name="codigo_venda" required>
-                    <button type="button" id="buscar-pharmup-btn" style="margin-top: 5px; width: auto; background-color: #007bff;">Buscar Dados PharmUp</button>
+                    <button type="button" id="buscar-pharmup-btn" class="btn" style="margin-top: 5px; width: auto; background-color: #007bff;">Buscar Dados PharmUp</button>
                  </div>
-                <div class="form-group"><label for="ordem_manipulacao">Ordem de Manipulação</label><input type="text" id="ordem_manipulacao" name="ordem_manipulacao" readonly></div>
-                <div class="form-group full-width"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" name="cliente_nome" required readonly></div>
-                <div class="form-group"><label for="valor_venda">Valor da Venda (R$)</label><input type="text" id="valor_venda" name="valor_venda" required readonly></div>
+                <div class="form-group"><label for="ordem_manipulacao">Ordem de Manipulação</label><input type="text" id="ordem_manipulacao" name="ordem_manipulacao"></div>
+                <div class="form-group full-width"><label for="cliente_nome">Nome do Cliente</label><input type="text" id="cliente_nome" name="cliente_nome" required></div>
+                <div class="form-group"><label for="valor_venda">Valor da Venda (R$)</label><input type="text" id="valor_venda" name="valor_venda" required></div>
                 <div class="form-group"><label for="volumes">Volumes</label><input type="number" id="volumes" name="volumes" value="1" required></div>
-                
-                <div class="form-group"><label for="janela_coleta">Janela/Local de Coleta</label><input type="text" id="janela_coleta" name="janela_coleta" required readonly></div>
-                
-                <div class="form-group full-width"><label for="endereco">Endereço (Rua, Nº - Compl.)</label><input type="text" id="endereco" name="endereco" readonly></div>
-                <div class="form-group"><label for="cidade">Cidade</label><input type="text" id="cidade" name="cidade" readonly></div>
-                <div class="form-group"><label for="numero_nota">Número da Nota</label><input type="text" id="numero_nota" name="numero_nota"></div>
+
+                <div class="form-group"><label for="janela_coleta">Janela/Local de Coleta</label><input type="text" id="janela_coleta" name="janela_coleta" required></div>
+
+                <div class="form-group full-width"><label for="endereco">Endereço (Rua, Nº - Compl., Bairro)</label><input type="text" id="endereco" name="endereco"></div>
+                <div class="form-group"><label for="cidade">Cidade</label><input type="text" id="cidade" name="cidade"></div>
+                <div class="form-group"><label for="uf">UF</label><input type="text" id="uf" name="uf" maxlength="2"></div>
             </div>
             <div class="form-actions">
                 <a href="/index.html" id="cancel-link" class="btn btn-cancel">Cancelar</a>
@@ -82,9 +81,9 @@
     const form = document.getElementById('envio-form');
     const pageTitle = document.getElementById('page-title');
     const successMessage = document.getElementById('success-message');
-    const lookupStatus = document.getElementById('lookup-status'); // Mensagem da busca
-    const codigoVendaInput = document.getElementById('codigo_venda'); // Input do código
-    const buscarPharmUpBtn = document.getElementById('buscar-pharmup-btn'); // Botão de busca manual
+    const lookupStatus = document.getElementById('lookup-status');
+    const codigoVendaInput = document.getElementById('codigo_venda');
+    const buscarPharmUpBtn = document.getElementById('buscar-pharmup-btn');
 
     // Mapeamento dos campos JSON para IDs do formulário
     const fieldMapping = {
@@ -92,14 +91,15 @@
         'ValorFinal': 'valor_venda', // Necessita formatação , -> .
         'LocalEntrega.Descricao': 'janela_coleta',
         'EnderecoEntrega.Cidade': 'cidade',
+        'EnderecoEntrega.UF': 'uf', // MUDANÇA: Adicionado UF
         // Campos que precisam de tratamento especial:
         'ordem_manipulacao': 'ordem_manipulacao', // Vem de itens[0]
         'endereco': 'endereco', // Combinação de campos
-        'marca': 'marca' // Campo Select
+        'marca': 'marca'
     };
-    
+
     // Lista de IDs dos campos que serão preenchidos automaticamente
-    const autoFilledFields = ['ordem_manipulacao', 'cliente_nome', 'valor_venda', 'janela_coleta', 'endereco', 'cidade'];
+    const autoFilledFields = ['ordem_manipulacao', 'cliente_nome', 'valor_venda', 'janela_coleta', 'endereco', 'cidade', 'uf'];
 
 
     let editMode = false;
@@ -114,58 +114,61 @@
         envioId = params.get('id');
 
         if (envioId) {
+            // MODO EDIÇÃO
             editMode = true;
             pageTitle.textContent = 'Editar Venda';
-            // Desabilita busca automática na edição para não sobrescrever dados já salvos
-            codigoVendaInput.readOnly = true; 
-            buscarPharmUpBtn.style.display = 'none'; // Esconde botão de busca
-            lookupStatus.style.display = 'none'; // Esconde status da busca
-            await fetchAndPopulateForm(envioId);
+            codigoVendaInput.readOnly = true;
+            buscarPharmUpBtn.style.display = 'none';
+            lookupStatus.style.display = 'none';
+            await fetchAndPopulateForm(envioId); // Popula e marca como readonly
         } else {
+            // MODO ADIÇÃO
             editMode = false;
             pageTitle.textContent = 'Adicionar Nova Venda';
             document.getElementById('cancel-link').href = '/index.html';
-            // Habilita busca automática no modo de adição
-            // codigoVendaInput.addEventListener('blur', handleCodigoVendaBlur); // Disparar ao sair do campo
-            buscarPharmUpBtn.addEventListener('click', handleCodigoVendaBlur); // Ou ao clicar no botão
-            // Marcar campos como não-readonly inicialmente
-             autoFilledFields.forEach(id => {
-                const element = document.getElementById(id);
-                if(element) element.readOnly = false;
-             });
+            buscarPharmUpBtn.addEventListener('click', handlePharmUpLookup); // Adiciona listener ao botão
+            // Campos começam editáveis por padrão (readOnly=false ou ausente no HTML)
         }
     });
 
+    // Função para carregar dados na EDIÇÃO
     async function fetchAndPopulateForm(id) {
         try {
             const { data, error } = await supabase.functions.invoke('get-envio-by-id', { body: { id: parseInt(id) } });
             if (error) throw error;
             const envio = data.envio;
-            
+
             for (const key in envio) {
                 const input = document.getElementById(key);
-                if (input) input.value = envio[key];
+                if (input) {
+                    input.value = envio[key];
+                    // Marca campos como readonly QUANDO CARREGADOS DO BANCO (EDIÇÃO)
+                    // Exceto Volumes e Numero Nota que podem precisar ser alterados
+                    if (autoFilledFields.includes(key) || key === 'codigo_venda') {
+                        input.readOnly = true;
+                    }
+                }
             }
+            // Trata campo 'marca' (select) separadamente
+              const marcaSelect = document.getElementById('marca');
+              if (marcaSelect && envio.marca) {
+                  marcaSelect.value = envio.marca;
+              }
+
             pageTitle.textContent = `Editar Venda #${envio.codigo_venda}`;
             originalJanela = envio.janela_coleta;
             document.getElementById('cancel-link').href = `vendas.html?janela=${encodeURIComponent(originalJanela)}`;
-
-            // Marcar campos preenchidos como readonly na edição (exceto os que podem mudar)
-            autoFilledFields.forEach(id => {
-                const element = document.getElementById(id);
-                if(element) element.readOnly = true;
-            });
 
         } catch (error) {
             alert(`Erro ao carregar dados da venda: ${error.message}`);
         }
     }
 
-    // --- NOVA FUNÇÃO: Lida com a busca no PharmUp ---
-    async function handleCodigoVendaBlur() {
+    // Função que lida com a busca no PharmUp
+    async function handlePharmUpLookup() {
         const codigo = codigoVendaInput.value.trim();
         if (!codigo) {
-            clearAutoFilledFields(); // Limpa campos se o código for apagado
+            clearAutoFilledFields();
             lookupStatus.style.display = 'none';
             return;
         }
@@ -173,27 +176,23 @@
         lookupStatus.innerHTML = 'Buscando dados no PharmUp... <div class="loader"></div>';
         lookupStatus.className = 'message info';
         lookupStatus.style.display = 'block';
-        disableFormFields(true); // Desabilita campos durante a busca
+        disableFormFieldsDuringLookup(true); // Desabilita campos durante a busca
 
         try {
             const { data, error } = await supabase.functions.invoke('buscador-vendas', {
                 body: { codigoVenda: codigo }
             });
 
-            // Erro retornado pela função (incluindo 404 - não encontrado)
             if (error) {
-                 // Verifica se é o erro específico de "não encontrado" que definimos com status 404
                  if (error.context && error.context.status === 404) {
                      throw new Error(error.context.json.error || "Venda não encontrada no PharmUp.");
                  } else {
-                    // Outros erros (500, etc)
                     throw new Error(error.context?.json?.error || error.message || "Erro desconhecido ao buscar dados.");
                  }
             }
-            
-            // Sucesso - Preenche o formulário
+
             populateFormWithPharmUpData(data);
-            lookupStatus.textContent = 'Dados carregados do PharmUp com sucesso!';
+            lookupStatus.textContent = 'Dados carregados do PharmUp! Verifique e edite se necessário.';
             lookupStatus.className = 'message success';
 
         } catch (err) {
@@ -203,140 +202,125 @@
             clearAutoFilledFields(); // Limpa campos em caso de erro
 
         } finally {
-            disableFormFields(false); // Reabilita campos
+            disableFormFieldsDuringLookup(false); // Reabilita campos (agora editáveis)
         }
     }
 
-    // --- NOVA FUNÇÃO: Preenche o formulário com dados do JSON ---
+    // Função que preenche o formulário com dados do JSON
     function populateFormWithPharmUpData(data) {
-        // Preenche campos diretos
+        // Limpa campos antes de preencher, garantindo que fiquem editáveis (readOnly=false)
+        clearAutoFilledFields(); 
+
         for (const jsonKey in fieldMapping) {
             const formId = fieldMapping[jsonKey];
             const element = document.getElementById(formId);
             if (element && data[jsonKey] !== undefined && data[jsonKey] !== null) {
-                 // Tratamento especial para valor (trocar vírgula por ponto)
                  if (formId === 'valor_venda') {
                      element.value = String(data[jsonKey]).replace(',', '.');
-                 } 
-                 // Tratamento para SELECT (marca)
+                 }
                  else if (element.tagName === 'SELECT' && formId === 'marca') {
-                     // Tenta setar para Neuvye se encontrar, senão mantém o padrão
                      if (String(data.meta?.setorDescricao).toUpperCase() === 'NEUVYE' || String(data['LocalEntrega.Descricao']).toUpperCase().includes('NEUVYE')) {
                          element.value = 'Neuvye';
-                     } 
-                     // Adicione mais lógicas aqui se precisar identificar DrogaVET
+                     }
                  }
-                 // Campos normais
-                 else if (formId !== 'endereco' && formId !== 'ordem_manipulacao') { // Ignora os especiais por enquanto
-                    element.value = data[jsonKey];
-                 }
-                 // Marca como readonly após preencher
-                 if(autoFilledFields.includes(formId)) {
-                    element.readOnly = true;
+                 else if (formId !== 'endereco' && formId !== 'ordem_manipulacao') {
+                     element.value = data[jsonKey];
                  }
             }
         }
 
-        // Preenche Ordem de Manipulação (primeiro item)
+        // Preenche Ordem de Manipulação
         const ordemInput = document.getElementById('ordem_manipulacao');
-        if (ordemInput && data.itens && data.itens.length > 0) {
-            const ordem = data.itens[0]['ManipulacaoOrdem.Codigo'];
-             if (ordem && ordem !== '0'){ // Só preenche se não for '0'
+        if (ordemInput) {
+             const ordem = (data.itens && data.itens.length > 0) ? data.itens[0]['ManipulacaoOrdem.Codigo'] : null;
+             if (ordem && ordem !== '0'){
                  ordemInput.value = ordem;
              } else {
-                 ordemInput.value = ''; // Deixa em branco se for '0'
+                 ordemInput.value = '';
              }
-            ordemInput.readOnly = true;
-        } else if (ordemInput) {
-             ordemInput.value = ''; // Limpa se não houver itens
-             ordemInput.readOnly = true;
+             ordemInput.readOnly = false;
         }
 
-
-        // Preenche Endereço Combinado
+        // Preenche Endereço Combinado (Rua, Nº - Compl., Bairro)
         const enderecoInput = document.getElementById('endereco');
         if (enderecoInput) {
             const rua = data['EnderecoEntrega.Endereco'] || '';
             const num = data['EnderecoEntrega.Numero'] || '';
             const compl = data['EnderecoEntrega.Complemento'] || '';
+            const bairro = data['EnderecoEntrega.Bairro'] || ''; // Pega o bairro
             let enderecoCompleto = rua;
             if (num) enderecoCompleto += `, ${num}`;
             if (compl) enderecoCompleto += ` - ${compl}`;
+            if (bairro) enderecoCompleto += `, ${bairro}`; // Adiciona o bairro
             enderecoInput.value = enderecoCompleto.trim();
-            enderecoInput.readOnly = true;
+            enderecoInput.readOnly = false; 
         }
-         // O campo volumes não será preenchido automaticamente, mantém o default 1
-         // O campo numero_nota não vem da API de busca, então não será preenchido
     }
 
-    // --- NOVA FUNÇÃO: Limpa os campos preenchidos automaticamente ---
+    // Função que limpa os campos preenchidos automaticamente
     function clearAutoFilledFields() {
-         autoFilledFields.forEach(id => {
+          autoFilledFields.forEach(id => {
              const element = document.getElementById(id);
              if(element) {
                  element.value = '';
-                 element.readOnly = false; // Permite edição manual se a busca falhar
+                 element.readOnly = false; // Garante que fiquem editáveis ao limpar
              }
-         });
-         // Limpa também o select de marca? Ou deixa como está? Decidi deixar.
-         // const marcaSelect = document.getElementById('marca');
-         // if (marcaSelect) marcaSelect.value = 'Neuvye'; // Volta pro default?
+          });
     }
 
-     // --- NOVA FUNÇÃO: Desabilita/Reabilita campos durante a busca ---
-    function disableFormFields(disabled) {
-        // Desabilita/Reabilita todos os inputs preenchidos + botão buscar + botão salvar
-        [codigoVendaInput, buscarPharmUpBtn, ...autoFilledFields.map(id => document.getElementById(id))].forEach(el => {
-            if(el) el.disabled = disabled;
-        });
-        // Também desabilita o botão Salvar principal
-         const saveButton = form.querySelector('button[type="submit"]');
-         if (saveButton) saveButton.disabled = disabled;
+      // Função que desabilita/Reabilita campos DURANTE A BUSCA
+    function disableFormFieldsDuringLookup(disabled) {
+        // Desabilita APENAS o botão de busca, o campo código venda e o botão salvar
+        buscarPharmUpBtn.disabled = disabled;
+        codigoVendaInput.disabled = disabled; 
+
+        const saveButton = form.querySelector('button[type="submit"]');
+        if (saveButton) saveButton.disabled = disabled;
     }
 
 
     // --- Função de Salvar (SUBMIT) ---
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+
+        // No modo EDIÇÃO, habilita temporariamente os campos readonly para pegar os valores
+        if (editMode) {
+             // Só mexe nos campos que DEVEM ser readonly na edição
+             autoFilledFields.forEach(id => {
+                 const element = document.getElementById(id);
+                 if (element && element.readOnly) element.readOnly = false; 
+             });
+        }
         
-        // Habilita temporariamente os campos readonly para pegar os valores
-        autoFilledFields.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) element.readOnly = false;
-        });
+        // Garante que o campo de código de venda esteja habilitado, se estiver readonly (no modo edição)
+        if (codigoVendaInput.readOnly) codigoVendaInput.readOnly = false;
+
 
         const formData = new FormData(form);
         const dataObject = Object.fromEntries(formData.entries());
 
-        // Desabilita novamente (se for edição) ou mantém habilitado (se for novo e busca falhou)
-         if (editMode) {
+        // Re-aplica `readOnly` e `disabled` (somente para Edição)
+        if (editMode) {
+            // Re-aplica readonly para campos autoFilledFields
              autoFilledFields.forEach(id => {
                  const element = document.getElementById(id);
                  if (element) element.readOnly = true;
              });
-         } else {
-             // Se dadosVendaAtual existe, significa que a busca deu certo, então re-aplica readonly
-             if (dadosVendaAtual) {
-                 autoFilledFields.forEach(id => {
-                    const element = document.getElementById(id);
-                    if (element) element.readOnly = true;
-                 });
-             }
-         }
+             // Re-aplica readonly para codigo_venda
+             codigoVendaInput.readOnly = true;
+        }
 
 
         let redirectUrl = '/index.html';
 
-        // Mostra mensagem de salvando...
         successMessage.textContent = `Salvando venda...`;
         successMessage.className = 'message info';
         successMessage.style.display = 'block';
-        form.querySelector('button[type="submit"]').disabled = true; // Desabilita salvar
-
+        form.querySelector('button[type="submit"]').disabled = true;
 
         try {
             let error;
-            
+
             if (editMode) {
                 const { error: updateError } = await supabase.functions.invoke('update-envio', { body: { id: parseInt(envioId), updates: dataObject } });
                 error = updateError;
@@ -350,16 +334,25 @@
                  const errorMsg = error.context?.json?.error || error.message || "Erro desconhecido ao salvar.";
                  throw new Error(errorMsg);
             };
-            
+
             successMessage.textContent = `Venda ${editMode ? 'atualizada' : 'criada'} com sucesso! Redirecionando...`;
-            successMessage.className = 'message success'; // Muda para classe de sucesso
+            successMessage.className = 'message success';
             successMessage.style.display = 'block';
             setTimeout(() => { window.location.href = redirectUrl; }, 2000);
 
         } catch (error) {
             alert(`Erro ao salvar: ${error.message}`);
-             successMessage.style.display = 'none'; // Esconde mensagem de salvando
-             form.querySelector('button[type="submit"]').disabled = false; // Reabilita salvar
+             successMessage.style.display = 'none';
+             form.querySelector('button[type="submit"]').disabled = false;
+             
+             // Re-aplica `readOnly` para o caso de erro, garantindo o estado original na edição
+             if (editMode) {
+                 autoFilledFields.forEach(id => {
+                     const element = document.getElementById(id);
+                     if (element) element.readOnly = true;
+                 });
+                 codigoVendaInput.readOnly = true;
+             }
         }
     });
 </script>
