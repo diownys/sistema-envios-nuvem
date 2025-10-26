@@ -69,7 +69,7 @@
             if (event.key === 'Enter') buscarVenda();
         });
 
-        // --- Função BUSCAR VENDA (sem mudanças) ---
+        // --- Função BUSCAR VENDA (mantida do primeiro código) ---
         async function buscarVenda() {
             const codigo = input.value.trim();
             if (!codigo) {
@@ -108,57 +108,58 @@
             }
         }
 
-        // --- Função GERAR HTML IMPRESSÃO (AJUSTE NO LAYOUT DO CABEÇALHO) ---
+        // --- Função GERAR HTML IMPRESSÃO (AJUSTADO PARA O SEGUNDO LAYOUT) ---
         function gerarHtmlImpressao(dados) {
             const v = (key) => dados[key] || '';
             const agora = new Date();
             const dataHoraAtual = agora.toLocaleDateString('pt-BR') + ', ' + agora.toLocaleTimeString('pt-BR');
 
+            // 1. Lógica do QR Code
             let qrCodeContent = '';
             if (dados.itens && dados.itens.length > 0 && dados.itens[0]['ManipulacaoOrdem.Codigo']) {
                 const primeiroCodigo = dados.itens[0]['ManipulacaoOrdem.Codigo'];
                 if (primeiroCodigo && primeiroCodigo !== '0') {
                     qrCodeContent = `${primeiroCodigo}$M`;
-                } else {
-                    console.warn("Primeiro item não tem código de manipulação válido ('0' ou nulo) para QR Code.");
                 }
-            } else {
-                console.warn("Não foi possível encontrar o código do primeiro item para o QR Code.");
             }
+            // OBS: No seu segundo layout, o QR Code é uma imagem estática (Base64) e não um div para ser gerado.
+            // Para manter a funcionalidade de geração de QR Code, manteremos o uso do `qrcode-container` no HTML de impressão.
 
             let itensHtml = '';
             if (dados.itens && Array.isArray(dados.itens)) {
                 dados.itens.forEach(item => {
+                    // Mantive os estilos inline de cores e alinhamento do seu PRIMEIRO código
+                    // e usei a estrutura de colunas do SEGUNDO layout.
                     itensHtml += `
                         <tr>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Codigo'] || ''}</td>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Descricao'] || ''}</td>
-                            <td></td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold; padding-right: 10px;">${item['ValorUnitario'] || '0,00'}</td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold; padding-right: 10px;">${item['ManipulacaoOrdem.DescontoPercentual'] || '0,00'}</td>
-                            <td style="font-size:10px;color:black; background-color:white;text-align:right; font-weight: bold; padding-right: 10px;">${item['ValorTotal'] || '0,00'}</td>
+                            <td style="font-size:10px;color:white; background-color:white;text-align:left;"></td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorUnitario'] || '0,00'}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.DescontoPercentual'] || '0,00'}</td>
+                            <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ValorTotal'] || '0,00'}</td>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.TemProdutoRefrigerado'] || ''}</td>
                         </tr>
                     `;
                 });
             }
 
-            // Monta o HTML completo
+            // Monta o HTML completo com os estilos e estrutura do SEGUNDO CÓDIGO.
             return `
                 <!DOCTYPE html>
-                <html lang="pt-br">
+                <html lang="pt-br" style="text-align:right;">
                 <head>
                     <meta charset="utf-8">
                     <title>Impressão Venda ${v('codigoVenda')}</title>
-                    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script> 
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
                     <style>
                         @media print { @page { margin: 0; } }
                         pre { background-color: transparent !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important; }
-                        body { font-family: Monospace; margin: 0; padding: 10px; } 
+                        body { font-family: Monospace; margin: 0; padding: 0; }
                         fieldset { border-width: 0px; page-break-before: always; }
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 5px; } 
-                        td, th { padding: 1px 3px; font-size: 10px; vertical-align: top; }
-                        th { text-align: left; }
+                        table { width: 100%; border-collapse: collapse; }
+                        td { padding: 4px; }
+                        th { padding: 4px; text-align: left; }
                         .branco { color: rgba(255, 255, 255, 0); }
                         table#tableType1 td, table#tableType1 th { border: 1px solid #808080; }
                         table#tableType2 td { border-bottom: 1px solid #808080; border-top: 1px solid #808080; }
@@ -166,44 +167,42 @@
                         table#tableType3 td, table#tableType3 th { border-right: 1px solid #808080; border-left: 1px solid #808080; }
                         table#tableType4 td, table#tableType4 th { border-top: 1px solid #808080; }
                         table#tableType5 td, table#tableType5 th { border-bottom: 1px solid #808080; }
-
-                        /* Estilos específicos */
-                        .header-table td { vertical-align: top; }
-                        .qr-info-cell { width: 60%; /* Ajuste a largura conforme necessário */ vertical-align: top; } /* Coluna da Esquerda: QR + Infos */
-                        .datetime-cell { text-align: right; vertical-align: top; width: 40%; } /* Coluna da Direita: Data/Hora */
-                        #qrcode-container { width: 80px; height: 80px; margin-bottom: 5px; } 
-                        #qrcode-container img { width: 100%; height: 100%; }
-                        .info-venda-table { margin-top: 5px; margin-bottom: 0; } /* Tabela das infos abaixo do QR */
-                        .info-venda-table td { padding: 1px 0; font-weight: bold; } /* Menos padding vertical */
-                        
-                         #tableType2 th:nth-child(4), #tableType2 td:nth-child(4), /* R$ Unit */
-                         #tableType2 th:nth-child(5), #tableType2 td:nth-child(5), /* % Dsc */
-                         #tableType2 th:nth-child(6), #tableType2 td:nth-child(6)  /* R$ Total */
-                         { text-align: right; padding-right: 10px; }
-
-                         .section-title { text-align: center; font-size: 10px; font-weight: bold; padding-top: 10px; padding-bottom: 5px; }
+                        /* Estilos para o QR Code (para aparecer igual a uma imagem de 100x100) */
+                        #qrcode-container { height: 100px; width: 100px; }
                     </style>
                 </head>
-                <body onload="gerarQRCodeEImprimir()"> 
+                <body onload="gerarQRCodeEImprimir()">
                     <fieldset>
-                        <table id="tableType0" class="header-table"> <tbody>
+                        
+                        <table id="tableType0">
+                            <tbody>
                                 <tr>
-                                    <td class="qr-info-cell"> ${qrCodeContent ? '<div id="qrcode-container"></div>' : ''}
-                                         <table class="info-venda-table">
-                                             <tbody>
-                                                <tr><td style="font-size:10px;">Código da venda: ${v('codigoVenda')}</td></tr>
-                                                <tr><td style="font-size:10px;">Observação: ${v('Observacao')}</td></tr>
-                                                <tr><td style="font-size:10px;">Vendedor: ${v('Usuario.Nome')}</td></tr>
-                                                <tr><td style="font-size:10px;">Emissão: ${v('DataAprovacao')}</td></tr>
-                                             </tbody>
-                                        </table>
-                                    </td>
-                                    <td class="datetime-cell">${dataHoraAtual}</td> </tr>
+                                    <th style="text-align:right;font-size: 10px;" colspan="3">${dataHoraAtual}</th>
+                                </tr>
                             </tbody>
                         </table>
-                       
-                        <table id="tableType0"> <tbody>
-                                <tr><th class="section-title" colspan="2">Dados do cliente</th></tr>
+                        <table id="tableType0">
+                            <tbody>
+                                <tr>
+                                    <td style="font-size:10px;color:black; background-color:white;text-align:left;">
+                                        ${qrCodeContent ? '<div id="qrcode-container"></div>' : ''}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <table id="tableType0">
+                            <tbody>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Código da venda: ${v('codigoVenda')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Vendedor: ${v('Usuario.Nome')}</td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Emissão: ${v('DataAprovacao')}</td></tr>
+                            </tbody>
+                        </table>
+
+                        <table id="tableType0">
+                            <tbody>
+                                <tr><th style="text-align: center; font-size: 10px;" colspan="2">Dados do cliente</th></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Cód Cliente: ${v('Cliente.Id')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Nome: ${v('Cliente.Nome')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CPF/CNPJ: ${v('Cliente.Cpf') || v('Cliente.Cnpj') || ''}</td></tr>
@@ -218,19 +217,21 @@
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">CEP: ${v('EnderecoEntrega.Cep')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Data: ${v('DataEntrega')}</td></tr>
                                 <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold" colspan="2">Local de Entrega: ${v('LocalEntrega.Descricao')}</td></tr>
+                                <tr><td style="font-size:10px;color:white; background-color:white;text-align:left;" colspan="2">|: </td></tr>
                             </tbody>
                         </table>
                         
-                        <table id="tableType2"> <thead>
-                                <tr><th class="section-title" colspan="7">Itens</th></tr>
+                        <table id="tableType2"> 
+                            <thead>
+                                <tr><th colspan="7" style="font-size: 10px;">Itens</th></tr>
                                 <tr>
                                     <th style="font-size: 10px;">Ordem </th>
-                                    <th style="font-size: 10px; width: 45%;">Descrição</th> 
+                                    <th style="font-size: 10px;">Descrição</th>
                                     <th style="font-size: 10px;"></th>
                                     <th style="font-size: 10px;">R$ Unit</th>
                                     <th style="font-size: 10px;">% Dsc</th>
                                     <th style="font-size: 10px;">R$ Total</th>
-                                    <th style="font-size: 10px;">Refrigerado?</th>
+                                    <th style="font-size: 10px;">Tem Produto Refrigerado?</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -238,36 +239,39 @@
                             </tbody>
                         </table>
 
-                        <table id="tableType0"> <tbody>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Qtde Itens: ${v('QuantidadeTotalItens')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Desconto : ${v('DescontoPercentual')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Taxa de Entrega: ${v('TaxaEntrega')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Valor Venda: ${v('ValorFinal')}</td></tr>
-                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td></tr>
-                             </tbody>
+                        <table id="tableType0"> 
+                            <tbody>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Qtde Itens: ${v('QuantidadeTotalItens')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Desconto : ${v('DescontoPercentual')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Taxa de Entrega: ${v('TaxaEntrega')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Valor Venda: ${v('ValorFinal')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                                <tr><td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">Observação: ${v('Observacao')}</td><td style="font-size:10px;color:white; background-color:white;text-align:left;">|: </td></tr>
+                            </tbody>
                         </table>
                     </fieldset>
 
                     <script>
                         function gerarQRCodeEImprimir() {
-                            const qrContent = "${qrContent}"; 
+                            const qrContent = "${qrCodeContent}";
                             const qrDiv = document.getElementById('qrcode-container');
                             
                             if (qrDiv && qrContent) {
                                 try {
+                                    // Aumentei o tamanho do QR Code para 100x100 para corresponder ao estilo do segundo layout
                                     new QRCode(qrDiv, {
                                         text: qrContent,
-                                        width: 80, 
-                                        height: 80,
-                                        correctLevel : QRCode.CorrectLevel.L 
+                                        width: 100,
+                                        height: 100,
+                                        correctLevel : QRCode.CorrectLevel.L
                                     });
                                 } catch (e) { console.error("Erro QR Code:", e); qrDiv.innerHTML = "Erro QR"; }
                             }
                             
+                            // Mantém o timeout para garantir que o QR Code seja renderizado antes da impressão
                             setTimeout(() => {
-                                try { window.print(); } 
+                                try { window.print(); }
                                 catch (e) { console.error("Erro Impressão:", e); alert("Erro ao imprimir."); }
-                            }, 500); 
+                            }, 500);
                         }
                     <\/script>
                 </body>
@@ -275,8 +279,7 @@
             `;
         }
 
-
-        // --- Função IMPRIMIR VENDA (sem mudanças) ---
+        // --- Função IMPRIMIR VENDA (mantida do primeiro código) ---
         function imprimirVenda() {
             if (!dadosVendaAtual) {
                 alert("Nenhum dado de venda para imprimir. Busque uma venda primeiro.");
