@@ -17,35 +17,34 @@ async function getPharmUpToken(): Promise<string> {
   if (!PHARMUP_USER || !PHARMUP_PASS) {
     throw new Error("Credenciais PHARMUP_USER ou PHARMUP_PASS não configuradas.")
   }
-  const loginParams = new URLSearchParams({
-    login: PHARMUP_USER,
-    senha: PHARMUP_PASS,
-  })
+  const loginParams = new URLSearchParams({ login: PHARMUP_USER, senha: PHARMUP_PASS })
   const url = `${API_BASE}/Login?${loginParams.toString()}`
   const res = await fetch(url, { method: 'POST', headers: API_HEADERS })
-  const text = await res.text()
-  let data: any
-  try { data = JSON.parse(text) } catch {
-    throw new Error(`Falha no login PharmUp: corpo inválido (${text.slice(0, 300)})`)
+  const raw = await res.text()
+  let json: any
+  try { json = raw ? JSON.parse(raw) : null } catch {
+    throw new Error(`Falha no login PharmUp: corpo inválido (${raw.slice(0, 400)})`)
   }
-  if (!res.ok) throw new Error(`Falha no login PharmUp (${res.status}): ${res.statusText} | body: ${text.slice(0, 300)}`)
-  if (!data.token) throw new Error("Login PharmUp OK, mas 'token' não recebido.")
-  return data.token
+  if (!res.ok) {
+    throw new Error(`Falha no login PharmUp (${res.status}): ${res.statusText} | body: ${raw.slice(0, 400)}`)
+  }
+  if (!json?.token) throw new Error("Login OK, mas 'token' não recebido.")
+  return json.token
 }
 
-// --- Parse do JSON de impressão ---
+// --- Parse do JSON de impressão (seu mesmo) ---
 function parsePrintData(printData: any) {
   const resultado: Record<string, any> = {}
   const tempItens: Record<number, Record<string, any>> = {}
 
   if (!printData || !Array.isArray(printData.sessoes)) {
-    throw new Error("Estrutura de dados de impressão inesperada. 'sessoes' não encontradas.")
+    throw new Error("Estrutura de impressão inesperada: 'sessoes' ausente.")
   }
 
   for (const sessao of printData.sessoes) {
     if (!Array.isArray(sessao.campos)) continue
 
-    if (sessao.tipo === 2) {
+    if (sessao.tipo === 2) { // grade (itens)
       for (const campo of sessao.campos) {
         const linha = campo.linha
         const key = campo.labelId
@@ -56,7 +55,7 @@ function parsePrintData(printData: any) {
           tempItens[linha][simpleKey] = value ?? null
         }
       }
-    } else if (sessao.tipo === 1) {
+    } else if (sessao.tipo === 1) { // campos simples
       for (const campo of sessao.campos) {
         if (campo.labelId && resultado[campo.labelId] == null) {
           resultado[campo.labelId] = campo.labelValue ?? null
@@ -70,28 +69,19 @@ function parsePrintData(printData: any) {
 }
 
 // --- Helpers ---
-async function fetchJson(url: string, headers: Record<string,string>) {
-  const res = await fetch(url, { headers })
-  const body = await res.text()
+async function fetchJson(url: string, init: RequestInit) {
+  const res = await fetch(url, init)
+  const raw = await res.text()
   let json: any
-  try { json = body ? JSON.parse(body) : null } catch {
-    throw new Error(`Erro HTTP ${res.status} em ${url} | body: ${body.slice(0, 500)}`)
+  try { json = raw ? JSON.parse(raw) : null } catch {
+    throw new Error(`Erro HTTP ${res.status} ${init.method ?? 'GET'} em ${url} | body: ${raw.slice(0, 500)}`)
   }
   if (!res.ok) {
-    throw new Error(`Erro HTTP ${res.status} em ${url}: ${res.statusText} | body: ${body.slice(0, 500)}`)
+    throw new Error(`Erro HTTP ${res.status} ${init.method ?? 'GET'} em ${url}: ${res.statusText} | body: ${raw.slice(0, 500)}`)
   }
   return json
 }
 
-function extrairListaVendas(payload: any): any[] {
-  if (Array.isArray(payload)) return payload
-  if (payload && Array.isArray(payload.list)) return payload.list
-  if (payload && Array.isArray(payload.items)) return payload.items
-  if (payload && Array.isArray(payload.data)) return payload.data
-  return []
-}
-
-// --- Handler ---
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -102,64 +92,87 @@ serve(async (req) => {
 
   try {
     const { codigoVenda } = await req.json()
-    if (!codigoVenda) throw new Error("O 'codigoVenda' (filterKey) é obrigatório.")
+    if (!codigoVenda) throw new Error("O 'codigoVenda' é obrigatório.")
 
+    // 1) Autentica
     const token = await getPharmUpToken()
     const authHeaders = { ...API_HEADERS, Authorization: `Bearer ${token}` }
 
-    // Montar query SEM &amp;
+    // 2) Chama ListVendas exatamente como a UI faz (GET + mesmos params)
     const listParams = new URLSearchParams({
       filterKey: String(codigoVenda),
       sortKey: 'codigo',
       sortOrder: 'desc',
-      pageIndex: '0',
-      pageSize: '5',
+      pageIndex: '1',      // conforme Network da tela
+      pageSize: '20',      // conforme Network da tela
+      dataInicial: '',     // conforme Network da tela
+      dataFinal: '',       // conforme Network da tela
+      radio: '',           // conforme Network da tela
+      tipoBuscaVenda: '0', // conforme Network da tela
     })
     const listUrl = `${API_BASE}/Venda/ListVendas?${listParams.toString()}`
-    const listData = await fetchJson(listUrl, authHeaders)
-    const lista = extrairListaVendas(listData)
+
+    const listData = await fetchJson(listUrl, { method: 'GET', headers: authHeaders })
+
+    // O shape retornado é { list, total, pageIndex, pageSize }
+    const lista = Array.isArray(listData?.list) ? listData.list : []
 
     if (debug) {
-      console.log('[DEBUG] ListVendas shape keys:', Object.keys(listData || {}))
-      if (lista[0]) console.log('[DEBUG] First venda keys:', Object.keys(lista[0]))
-      console.log('[DEBUG] Qtde retornada:', lista.length)
+      console.log('[DEBUG] ListVendas keys:', Object.keys(listData || {}))
+      console.log('[DEBUG] list length:', lista.length)
+      if (lista[0]) console.log('[DEBUG] first item keys:', Object.keys(lista[0]))
     }
 
     if (!lista.length) {
-      throw new Error(`NENHUMA venda encontrada com o código/filterKey '${codigoVenda}'.`)
+      throw new Error(`NENHUMA venda encontrada com o código '${codigoVenda}'.`)
     }
 
-    // preferir match exato pelo 'codigo'
+    // Preferir o match exato do 'codigo'
     const vendaEncontrada =
       lista.find((v: any) => String(v.codigo) === String(codigoVenda)) ?? lista[0]
 
-    const vendaId = vendaEncontrada?.id ?? vendaEncontrada?.vendaId ?? vendaEncontrada?.ID
+    const vendaId = vendaEncontrada?.id
     if (!vendaId) {
-      const keys = vendaEncontrada ? Object.keys(vendaEncontrada) : []
-      throw new Error(`Venda encontrada, mas não foi possível extrair 'id'. Keys: [${keys.join(', ')}]`)
+      throw new Error(`Venda encontrada, mas não foi possível extrair 'id'. Keys: ${Object.keys(vendaEncontrada || {}).join(', ')}`)
     }
 
-    // GetToPrint
+    // 3) (PRÓXIMO PASSO) Buscar GetToPrint — precisamos confirmar os params exatos
+    // Por ora, deixo montado com o que usávamos:
+    const modeloImpressaoId = 1714
     const printParams = new URLSearchParams({
       id: String(vendaId),
-      modeloImpressaoId: '1714',
+      modeloImpressaoId: String(modeloImpressaoId),
     })
     const printUrl = `${API_BASE}/Venda/GetToPrint?${printParams.toString()}`
-    const printData = await fetchJson(printUrl, authHeaders)
-    const dadosVendaFormatado = parsePrintData(printData)
+    const printData = await fetchJson(printUrl, { method: 'GET', headers: authHeaders })
 
-    dadosVendaFormatado.idVenda = vendaId
-    dadosVendaFormatado.codigoVenda = vendaEncontrada?.codigo ?? String(codigoVenda)
+    const dadosVenda = parsePrintData(printData)
+    dadosVenda.idVenda = vendaId
+    dadosVenda.codigoVenda = vendaEncontrada?.codigo
 
-    if (debug) {
-      console.log('[DEBUG] Campos topo:', Object.keys(dadosVendaFormatado).slice(0, 20))
-      console.log('[DEBUG] Itens (qtde):', Array.isArray(dadosVendaFormatado.itens) ? dadosVendaFormatado.itens.length : 0)
+    // Opcional: também devolver alguns campos “rápidos” que já vieram do ListVendas
+    dadosVenda.meta = {
+      situacao: vendaEncontrada?.situacaoDescricao,
+      clienteNome: vendaEncontrada?.clienteNome,
+      valorFinal: vendaEncontrada?.valorFinal,
+      itensResumo: vendaEncontrada?.itens?.map((it: any) => ({
+        id: it.id,
+        codigo: it.codigo,
+        produtoDescricao: it.produtoDescricao,
+        quantidade: it.quantidade,
+        valorUnitario: it.valorUnitario,
+        valorTotal: it.valorTotal,
+      })) ?? [],
     }
 
-    return new Response(
-      JSON.stringify(dadosVendaFormatado),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    if (debug) {
+      console.log('[DEBUG] GetToPrint parsed keys:', Object.keys(dadosVenda))
+      console.log('[DEBUG] itens (qtde):', Array.isArray(dadosVenda.itens) ? dadosVenda.itens.length : 0)
+    }
+
+    return new Response(JSON.stringify(dadosVenda), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
 
   } catch (error: any) {
     console.error(error?.message || error)
