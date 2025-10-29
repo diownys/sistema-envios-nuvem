@@ -19,93 +19,131 @@ let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada 
 
 async function updateApiData() {
     try {
-        // Busca todos os envios do Supabase
-        const { data: envios, error } = await supabase.from('envios').select('*');
-        if (error) throw error;
-
-        console.log('🔍 Total de registros retornados do Supabase:', envios?.length);
-        console.log('Primeiro registro detalhado:', JSON.stringify(envios?.[0] || {}, null, 2));
-
-        // 🔹 Filtra apenas envios do dia atual
         const hoje = new Date().toISOString().slice(0, 10);
-        const enviosHoje = (envios || []).filter(e => {
-            if (!e?.created_at) return false;
-            const dataFormatada = new Date(e.created_at);
-            if (isNaN(dataFormatada)) return false;
-            return dataFormatada.toISOString().slice(0, 10) === hoje;
-        });
+        // Definindo início e fim do dia em UTC para filtros mais precisos no Supabase
+        const inicioDiaUTC = `${hoje}T00:00:00.000Z`;
+        const amanha = new Date();
+        amanha.setDate(amanha.getDate() + 1);
+        const fimDiaUTC = `${amanha.toISOString().slice(0, 10)}T00:00:00.000Z`; // Início do dia seguinte (exclusive)
 
-        // 🔹 Separando concluidos e pendentes do dia
-        const concluidosHoje = enviosHoje.filter(e => String(e?.status || '').toLowerCase() === 'confirmado');
-        const totalConcluidosHoje = concluidosHoje.length;
+        console.log(`Buscando pendentes e confirmados atualizados entre ${inicioDiaUTC} e ${fimDiaUTC}`);
 
-        const pendentesHoje = enviosHoje.filter(e => String(e?.status || '').toLowerCase() !== 'confirmado');
-        const totalPendentesHoje = pendentesHoje.length;
+        // ----- BUSCA DE DADOS AJUSTADA -----
 
-        // 🔹 Valor expedido apenas dos concluidos
-        const valorExpedido = concluidosHoje.reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
+        // 1. Busca TODOS os envios PENDENTES (status != 'Confirmado')
+        const { data: pendentesGeral, error: errorPendentes } = await supabase
+            .from('envios')
+            .select('*')
+            .neq('status', 'Confirmado'); // Busca tudo que NÃO é 'Confirmado'
+        if (errorPendentes) {
+            console.error("Erro ao buscar pendentes:", errorPendentes);
+            throw errorPendentes;
+        }
 
-        // 🔹 Refrigerados pendentes
-        const alertaRefrigerados = pendentesHoje.filter(e => e.requer_refrigeracao).length;
+        // 2. Busca envios CONFIRMADOS ATUALIZADOS HOJE
+        //    (Assumindo que 'updated_at' é atualizado quando o status muda para Confirmado)
+        const { data: concluidosHoje, error: errorConcluidos } = await supabase
+            .from('envios')
+            .select('*')
+            .eq('status', 'Confirmado')
+            .gte('updated_at', inicioDiaUTC) // Maior ou igual ao início do dia (UTC)
+            .lt('updated_at', fimDiaUTC);     // Menor que o início do dia seguinte (UTC)
+        if (errorConcluidos) {
+             console.error("Erro ao buscar concluídos hoje:", errorConcluidos);
+            throw errorConcluidos;
+        }
 
-        // 🔹 Pendentes por janela
-        const janelas = [...new Set(pendentesHoje.map(e => e.janela_coleta).filter(Boolean))];
-        const pendentesPorJanela = janelas.map(j => ({
+        console.log('🔍 Total de Pendentes (Geral):', pendentesGeral?.length);
+        console.log('🔍 Total de Concluídos Atualizados Hoje:', concluidosHoje?.length);
+        if (concluidosHoje && concluidosHoje.length > 0) {
+            console.log('Primeiro concluído hoje:', JSON.stringify(concluidosHoje[0], null, 2));
+        }
+
+
+        // ----- CÁLCULOS AJUSTADOS -----
+
+        const totalConcluidosHoje = concluidosHoje?.length || 0;
+        const totalPendentesGeral = pendentesGeral?.length || 0; // Usa a contagem de TODOS os pendentes
+
+        // 🔹 Valor expedido (dos concluídos hoje)
+        const valorExpedido = (concluidosHoje || []).reduce((acc, e) => acc + (Number(e.valor_total || e.valor_venda) || 0), 0);
+
+        // 🔹 Refrigerados PENDENTES (geral)
+        const alertaRefrigerados = (pendentesGeral || []).filter(e => e.requer_refrigeracao).length;
+
+        // 🔹 Pendentes por janela (geral)
+        // Filtra para garantir que apenas strings não vazias sejam usadas como chaves
+        const janelasValidas = (pendentesGeral || [])
+            .map(e => e.janela_coleta)
+            .filter(j => typeof j === 'string' && j.trim() !== '');
+        const janelasUnicas = [...new Set(janelasValidas)];
+
+        const pendentesPorJanela = janelasUnicas.map(j => ({
             janela_coleta: j,
-            total: pendentesHoje.filter(e => e.janela_coleta === j).length
+            total: (pendentesGeral || []).filter(e => e.janela_coleta === j).length
         }));
+        // Ordena as janelas para exibição consistente
+        pendentesPorJanela.sort((a, b) => a.janela_coleta.localeCompare(b.janela_coleta));
 
-        // 🔹 Envios por UF (somente concluidos hoje para pintar o mapa)
+
+        // 🔹 Envios por UF (somente concluídos hoje para pintar o mapa)
         const enviosPorUF = {};
-        for (const e of concluidosHoje) {
+        for (const e of (concluidosHoje || [])) {
             const uf = (e.uf || e.estado || '').toString().trim().toUpperCase().slice(0, 2);
-            if (!uf) continue;
-            enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
+            if (uf && /^[A-Z]{2}$/.test(uf)) { // Garante que é uma UF válida de 2 letras
+                 enviosPorUF[uf] = (enviosPorUF[uf] || 0) + 1;
+            } else {
+                console.warn(`Registro ${e.id} (Venda ${e.codigo_venda}) com UF inválida ou ausente: '${e.uf}'`);
+            }
         }
 
         // === Atualiza o dashboard ===
         const totalEnviosEl = document.getElementById('total-envios');
-        if (totalEnviosEl) totalEnviosEl.textContent = String(totalConcluidosHoje); // só concluidos
+        if (totalEnviosEl) totalEnviosEl.textContent = String(totalConcluidosHoje); // Correto: Concluídos HOJE
 
         const valorTotalEl = document.getElementById('valor-total');
-        if (valorTotalEl) valorTotalEl.textContent = valorExpedido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        if (valorTotalEl) valorTotalEl.textContent = valorExpedido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // Formata como moeda
 
-        // Atualiza barra de progresso: concluidos vs pendentes
-        // Note: agora a função recebe (concluidos, pendentes)
-        updateProgressChart(totalConcluidosHoje, totalPendentesHoje);
+        // Atualiza barra de progresso: concluídos HOJE vs TODOS pendentes
+        updateProgressChart(totalConcluidosHoje, totalPendentesGeral);
 
-        // Atualiza alertas refrigerados
+        // Atualiza alertas refrigerados (todos pendentes)
         const alertEl = document.getElementById('refrigerated-alert');
         if (alertEl) {
             alertEl.textContent = String(alertaRefrigerados);
-            if (alertEl.parentElement) alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75';
+            if (alertEl.parentElement) alertEl.parentElement.style.backgroundColor = alertaRefrigerados > 0 ? '#d63031' : '#273c75'; // Vermelho se > 0, senão azul
         }
 
-        // Atualiza janelas pendentes
+        // Atualiza janelas pendentes (todos pendentes)
         updateJanelaBlocks(pendentesPorJanela);
 
-        // Atualiza mapa com envios concluidos
+        // Atualiza mapa com envios concluídos HOJE
         updateMap(enviosPorUF);
 
-        console.table(enviosHoje);
-        console.log('Pendentes por janela:', pendentesPorJanela);
-        console.log('Envios concluidos por UF:', enviosPorUF);
+        console.log('Pendentes (Geral) por janela:', JSON.stringify(pendentesPorJanela, null, 2));
+        console.log('Envios Concluídos Hoje por UF:', JSON.stringify(enviosPorUF, null, 2));
 
     } catch (error) {
-        console.error("Erro ao buscar dados do Supabase:", error);
+        console.error("Erro detalhado ao buscar/processar dados:", error);
+        // Mensagens de erro mais detalhadas
+        const errorMsg = `Erro: ${error.message || 'Falha ao carregar dados.'}`;
         const totalEnviosEl = document.getElementById('total-envios');
-        if (totalEnviosEl) totalEnviosEl.textContent = '---';
+        if (totalEnviosEl) totalEnviosEl.textContent = 'Erro';
         const valorTotalEl = document.getElementById('valor-total');
-        if (valorTotalEl) valorTotalEl.textContent = '---';
+        if (valorTotalEl) valorTotalEl.textContent = 'Erro';
+        updateProgressChart(0, 0); // Zera o gráfico de progresso
         const mapContainer = document.getElementById('map-container');
-        if (mapContainer) mapContainer.innerHTML =
-            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
+        if (mapContainer) mapContainer.innerHTML = `<p style="color:#ff6b6b;text-align:center;">${errorMsg}</p>`;
         const janelaBlocks = document.getElementById('janela-stats-blocks');
-        if (janelaBlocks) janelaBlocks.innerHTML =
-            `<p style="color:#ff6b6b;text-align:center;">Erro ao buscar dados</p>`;
+        if (janelaBlocks) janelaBlocks.innerHTML = `<p style="color:#ff6b6b;text-align:center;">${errorMsg}</p>`;
+        const alertEl = document.getElementById('refrigerated-alert');
+         if (alertEl) alertEl.textContent = '!';
+
+    } finally {
+        // Adiciona um log final para indicar que a função terminou
+        console.log('🔄 Atualização da API concluída.');
     }
 }
-
 
 
 async function fetchAndParseCsv(url) {
