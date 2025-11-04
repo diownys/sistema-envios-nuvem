@@ -39,7 +39,6 @@
         .btn-back { background-color: #6c757d; }
         .btn:hover { background-color: #0056b3; }
         
-        /* --- Novos Controles de Filtro --- */
         .controls { 
             display: flex; 
             gap: 1rem; 
@@ -62,7 +61,7 @@
             border-radius: 5px;
             text-align: center;
             margin-top: 1rem;
-            display: none; /* Começa oculto */
+            display: none; 
         }
 
         .table-container { background: white; border-radius: 8px; overflow-x: auto; }
@@ -75,11 +74,10 @@
         .status-error { color: #dc3545; }
         .status-checking { color: #6c757d; }
 
-        /* --- Estilos de Impressão --- */
         @media print {
             body { background-color: #fff; padding: 0; margin: 0; }
             .header, .controls, .btn-back {
-                display: none !important; /* Esconde cabeçalho e filtros */
+                display: none !important; 
             }
             .container {
                 box-shadow: none; border: none; padding: 0;
@@ -125,11 +123,10 @@
                         <th>Status (Envio)</th>
                         <th>Status NFe</th>
                         <th>Nº da Nota</th>
-                        <th>Chave de Acesso</th>
                     </tr>
                 </thead>
                 <tbody id="vendas-table-body">
-                    <tr><td colspan="6" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>
+                    <tr><td colspan="5" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -142,22 +139,17 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // --- Variáveis Globais ---
-    let todasAsVendas = []; // Guarda os dados da janela selecionada
-    let dataStringGlobal = ''; // "YYYY-MM-DD"
-    let startOfDayGlobal = ''; // ISO String
-    let endOfDayGlobal = '';   // ISO String
+    let todasAsVendas = []; 
+    let dataStringGlobal = ''; 
+    let startOfDayGlobal = ''; 
+    let endOfDayGlobal = '';   
 
-    // --- Elementos do DOM ---
     const janelaSelect = document.getElementById('janela-select');
     const searchInput = document.getElementById('search-input');
     const printButton = document.getElementById('print-button');
     const tableBody = document.getElementById('vendas-table-body');
     const statusMessage = document.getElementById('status-message');
 
-    /**
-     * Helper para formatar data (YYYY-MM-DD)
-     */
     function getYYYYMMDD(date) {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -165,22 +157,15 @@
         return `${yyyy}-${mm}-${dd}`;
     }
 
-    /**
-     * PASSO 1: Iniciação da Página
-     */
     document.addEventListener('DOMContentLoaded', async () => {
-        // 1. Autenticação
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { 
             window.location.href = '/login.html'; 
             return; 
         }
 
-        // 2. Definir "Hoje" (Filtro Oculto)
-        // Usamos fuso -03:00 (Brasil) para garantir que "hoje"
-        // seja o dia correto, independente do fuso do servidor.
         const hoje = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-        dataStringGlobal = getYYYYMMDD(hoje); // "YYYY-MM-DD"
+        dataStringGlobal = getYYYYMMDD(hoje); 
 
         const startOfDay = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
         const endOfDay = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1, 0, 0, 0);
@@ -188,19 +173,12 @@
         startOfDayGlobal = startOfDay.toISOString();
         endOfDayGlobal = endOfDay.toISOString();
 
-        // 3. Carregar o filtro de janelas
         await carregarFiltroJanelas(startOfDayGlobal, endOfDayGlobal);
-        
-        // 4. Configurar Event Listeners
         setupEventListeners();
     });
 
-    /**
-     * PASSO 2: Carrega o <select> com as janelas do dia
-     */
     async function carregarFiltroJanelas(startISO, endISO) {
         try {
-            // Busca apenas envios de HOJE
             const { data, error } = await supabase
                 .from('envios')
                 .select('janela_coleta')
@@ -209,7 +187,6 @@
             
             if (error) throw error;
 
-            // Pega nomes únicos de janelas
             const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela'))];
             janelasUnicas.sort();
 
@@ -229,56 +206,44 @@
         }
     }
 
-    /**
-     * PASSO 3: Configura os botões e filtros
-     */
     function setupEventListeners() {
-        // Quando o usuário MUDA a janela no dropdown
         janelaSelect.addEventListener('change', () => {
             const janelaSelecionada = janelaSelect.value;
             if (janelaSelecionada) {
-                // Chama a função principal de carregamento
                 carregarVendasEVerificarNotas(janelaSelecionada, startOfDayGlobal, endOfDayGlobal, dataStringGlobal);
             } else {
-                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>';
+                // Colspan ajustado para 5
+                tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>';
                 todasAsVendas = [];
             }
         });
 
-        // Filtro de busca
         searchInput.addEventListener('input', () => {
             const query = searchInput.value.toLowerCase();
             const vendasFiltradas = todasAsVendas.filter(venda => 
                 (venda.cliente_nome?.toLowerCase().includes(query)) ||
                 (venda.codigo_venda?.toLowerCase().includes(query)) ||
                 (venda.nfe_status?.toLowerCase().includes(query)) ||
-                (venda.nfe_numero?.toLowerCase().includes(query)) ||
-                (venda.nfe_chave?.toLowerCase().includes(query))
+                (venda.nfe_numero?.toLowerCase().includes(query))
+                // Busca por chave removida
             );
             
             renderTable(vendasFiltradas);
-            // Re-popula os dados da NFe que já temos
             repopularNFeData(vendasFiltradas);
         });
 
-        // Botão de Imprimir
         printButton.addEventListener('click', () => {
-            // Ajusta o título para impressão
             const dataFormatada = new Date(dataStringGlobal + 'T12:00:00').toLocaleDateString('pt-BR');
             document.title = `Conferencia NFe - ${janelaSelect.value} - ${dataFormatada}`;
             window.print();
-            // Restaura o título
             document.title = "Conferência de Notas Fiscais";
         });
     }
 
-    /**
-     * PASSO 4: Carrega as vendas e inicia a verificação das notas
-     */
     async function carregarVendasEVerificarNotas(janela, startDate, endDate, dataBusca) {
-        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Carregando vendas...</td></tr>'; 
+        // Colspan ajustado para 5
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando vendas...</td></tr>'; 
         try {
-            // 1. Busca as vendas da janela
             const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
                 body: { 
                     janela: janela,
@@ -290,31 +255,29 @@
             todasAsVendas = data.vendas;
             
             if (todasAsVendas.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma venda encontrada para esta janela.</td></tr>'; 
+                 // Colspan ajustado para 5
+                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para esta janela.</td></tr>'; 
                  return;
             }
             
-            // 2. Renderiza a tabela com "..."
             renderTable(todasAsVendas);
-            
-            // 3. Inicia a verificação das notas em paralelo
             await verificarNotas(todasAsVendas, dataBusca);
 
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="6">Erro ao carregar vendas: ${error.message}</td></tr>`; 
+            // Colspan ajustado para 5
+            tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`; 
         }
     }
 
-    /**
-     * PASSO 5: Renderiza a tabela (com placeholders para NFe)
-     */
     function renderTable(vendasParaRenderizar) {
         tableBody.innerHTML = '';
         if (vendasParaRenderizar.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
+            // Colspan ajustado para 5
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
             return;
         }
         vendasParaRenderizar.forEach(venda => {
+            // Célula da chave removida
             tableBody.innerHTML += `
                 <tr id="venda-row-${venda.id}">
                     <td>${venda.cliente_nome || 'N/A'}</td>
@@ -322,15 +285,11 @@
                     <td>${venda.status || 'Pendente'}</td>
                     <td class="status-cell status-checking" id="status-nfe-${venda.id}">...</td>
                     <td id="num-nfe-${venda.id}">...</td>
-                    <td id="chave-nfe-${venda.id}">...</td>
                 </tr>
             `;
         });
     }
 
-    /**
-     * PASSO 6: Verifica a NFe de cada venda e atualiza o DOM
-     */
     async function verificarNotas(listaDeVendas, dataBusca) {
         const promessas = listaDeVendas.map(venda => {
             return supabase.functions.invoke('get-nota-details', {
@@ -341,45 +300,36 @@
                 }
             })
             .then(({ data: nfeData, error: funcError }) => {
-                // Salva os dados no objeto para o filtro
                 if (funcError || nfeData.error) {
                     venda.nfe_status = 'Não Encontrada'; 
                 } else {
                     venda.nfe_status = 'Emitida';
                     venda.nfe_numero = nfeData.numero;
-                    venda.nfe_chave = nfeData.chave;
+                    // Lógica da chave removida
                 }
-                // Atualiza o DOM
-                repopularNFeData([venda]); // Atualiza só esta linha
+                repopularNFeData([venda]); 
             });
         });
         await Promise.allSettled(promessas);
     }
 
-    /**
-     * Helper: Atualiza o DOM com os dados de NFe (usado na Carga e no Filtro)
-     */
     function repopularNFeData(listaDeVendas) {
         listaDeVendas.forEach(venda => {
             const statusCell = document.getElementById(`status-nfe-${venda.id}`);
-            if (!statusCell) return; // Linha não está visível (foi filtrada)
+            if (!statusCell) return; 
 
             if (venda.nfe_status === 'Emitida') {
                 statusCell.innerText = 'Emitida';
                 statusCell.className = 'status-cell status-ok';
                 document.getElementById(`num-nfe-${venda.id}`).innerText = venda.nfe_numero || 'N/D';
-                document.getElementById(`chave-nfe-${venda.id}`).innerText = venda.nfe_chave || 'N/D';
+                // Lógica da chave removida
             } else if (venda.nfe_status === 'Não Encontrada') {
                 statusCell.innerText = 'Não Encontrada';
                 statusCell.className = 'status-cell status-error';
             }
-            // Se o status for indefinido, ele permanece "..." (status-checking)
         });
     }
 
-    /**
-     * Helper: Mostra mensagens de status
-     */
     function showStatusMessage(message, type = 'info') {
         statusMessage.textContent = message;
         statusMessage.style.display = 'block';
