@@ -18,6 +18,24 @@
         .kpi-card h3 { margin-top: 0; color: #555; font-size: 1rem; }
         .kpi-card .value { font-size: 2.5rem; font-weight: bold; color: #333; }
         .kpi-card .details { font-size: 0.9rem; color: #777; margin-top: 0.5rem; }
+        .filters .btn-notas {
+    background-color: transparent; /* Fundo transparente */
+    color: #3dca5e; /* Cor do texto/borda (o verde que você usou) */
+    border: 2px solid #3dca5e; /* Borda para parecer um botão */
+    padding: 0.8rem 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold; /* Deixa o texto em negrito */
+    text-decoration: none; /* Importante se for um <a> */
+    display: inline-block; /* Importante se for um <a> */
+    transition: background-color 0.3s, color 0.3s; /* Efeito de hover */
+}
+
+.filters .btn-notas:hover {
+    background-color: #3dca5e;
+    color: white;
+}
     </style>
 </head>
 <body>
@@ -31,7 +49,9 @@
             <label for="end-date">Até:</label>
             <input type="date" id="end-date">
             <button id="generate-report">Gerar Relatório</button>
-            <a href="conferencia-notas.html" style="background-color: #3dca5e;">Verificar Notas</a>
+<a href="conferencia-notas.html" class="btn-notas">
+    Verificar Notas
+</a>
         </div>
 
         <div id="kpi-container" class="kpi-grid">
