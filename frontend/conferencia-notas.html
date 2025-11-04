@@ -210,9 +210,9 @@
         janelaSelect.addEventListener('change', () => {
             const janelaSelecionada = janelaSelect.value;
             if (janelaSelecionada) {
+                // Passamos a data de "hoje" (dataStringGlobal) para a função
                 carregarVendasEVerificarNotas(janelaSelecionada, startOfDayGlobal, endOfDayGlobal, dataStringGlobal);
             } else {
-                // Colspan ajustado para 5
                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>';
                 todasAsVendas = [];
             }
@@ -225,7 +225,6 @@
                 (venda.codigo_venda?.toLowerCase().includes(query)) ||
                 (venda.nfe_status?.toLowerCase().includes(query)) ||
                 (venda.nfe_numero?.toLowerCase().includes(query))
-                // Busca por chave removida
             );
             
             renderTable(vendasFiltradas);
@@ -241,7 +240,6 @@
     }
 
     async function carregarVendasEVerificarNotas(janela, startDate, endDate, dataBusca) {
-        // Colspan ajustado para 5
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando vendas...</td></tr>'; 
         try {
             const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
@@ -255,16 +253,15 @@
             todasAsVendas = data.vendas;
             
             if (todasAsVendas.length === 0) {
-                 // Colspan ajustado para 5
                  tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para esta janela.</td></tr>'; 
                  return;
             }
             
             renderTable(todasAsVendas);
+            // Passamos a data de "hoje" (dataBusca) para a função de verificação
             await verificarNotas(todasAsVendas, dataBusca);
 
         } catch (error) {
-            // Colspan ajustado para 5
             tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`; 
         }
     }
@@ -272,12 +269,10 @@
     function renderTable(vendasParaRenderizar) {
         tableBody.innerHTML = '';
         if (vendasParaRenderizar.length === 0) {
-            // Colspan ajustado para 5
             tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
             return;
         }
         vendasParaRenderizar.forEach(venda => {
-            // Célula da chave removida
             tableBody.innerHTML += `
                 <tr id="venda-row-${venda.id}">
                     <td>${venda.cliente_nome || 'N/A'}</td>
@@ -290,13 +285,34 @@
         });
     }
 
-    async function verificarNotas(listaDeVendas, dataBusca) {
+    /**
+     * =================================================================
+     * FUNÇÃO MODIFICADA
+     * =================================================================
+     */
+    async function verificarNotas(listaDeVendas, dataBuscaHoje) {
+        
+        // --- INÍCIO DA MUDANÇA ---
+        // 1. Definir a data final (hoje)
+        const dataFim = dataBuscaHoje; 
+        
+        // 2. Definir a data inicial (90 dias atrás)
+        // Usamos T12:00 para garantir que o new Date() não pule o dia
+        const hoje = new Date(dataBuscaHoje + 'T12:00:00'); 
+        const dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - 90); // 90 dias no passado
+        
+        // 3. Re-formatar a data inicial para "YYYY-MM-DD"
+        // A função getYYYYMMDD() já existe no topo do script
+        const dataInicioStr = getYYYYMMDD(dataInicio);
+        // --- FIM DA MUDANÇA ---
+
         const promessas = listaDeVendas.map(venda => {
             return supabase.functions.invoke('get-nota-details', {
                 body: {
                     codigoVenda: venda.codigo_venda,
-                    de: dataBusca,
-                    ate: dataBusca
+                    de: dataInicioStr, // <-- MUDADO
+                    ate: dataFim        // <-- MUDADO
                 }
             })
             .then(({ data: nfeData, error: funcError }) => {
@@ -305,13 +321,15 @@
                 } else {
                     venda.nfe_status = 'Emitida';
                     venda.nfe_numero = nfeData.numero;
-                    // Lógica da chave removida
                 }
                 repopularNFeData([venda]); 
             });
         });
         await Promise.allSettled(promessas);
     }
+    // =================================================================
+    // FIM DA MODIFICAÇÃO
+    // =================================================================
 
     function repopularNFeData(listaDeVendas) {
         listaDeVendas.forEach(venda => {
@@ -322,7 +340,6 @@
                 statusCell.innerText = 'Emitida';
                 statusCell.className = 'status-cell status-ok';
                 document.getElementById(`num-nfe-${venda.id}`).innerText = venda.nfe_numero || 'N/D';
-                // Lógica da chave removida
             } else if (venda.nfe_status === 'Não Encontrada') {
                 statusCell.innerText = 'Não Encontrada';
                 statusCell.className = 'status-cell status-error';
