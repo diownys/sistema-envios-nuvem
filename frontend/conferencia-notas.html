@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conferência de Notas Fiscais</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 1400px; 
+            margin: 0 auto;
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 1.5rem; 
+            flex-wrap: wrap; 
+        }
+        .header h1 { color: #333; margin: 0; font-size: 1.8rem; }
+        .header h2 { color: #555; margin: 0; font-size: 1.1rem; font-weight: 400; }
+        .header-actions { display: flex; gap: 1rem; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-print { background-color: #17a2b8; }
+        .btn-back { background-color: #6c757d; }
+        .btn:hover { background-color: #0056b3; }
+        
+        #status-message {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .conference-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .conference-table th, .conference-table td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+        .conference-table th { background-color: #f9f9f9; }
+
+        .status-cell { font-weight: bold; }
+        .status-ok { color: #28a745; }
+        .status-error { color: #dc3545; }
+        .status-checking { color: #6c757d; }
+        
+        /* --- Estilos de Impressão --- */
+        @media print {
+            body { 
+                background-color: #fff; 
+                padding: 0; 
+                margin: 0;
+            }
+            .header, .btn-back {
+                display: none !important; /* Esconde cabeçalho e botões */
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+            .conference-table {
+                font-size: 10pt; /* Diminui a fonte para caber */
+            }
+            .conference-table th, .conference-table td {
+                padding: 5px;
+            }
+            .status-cell {
+                -webkit-print-color-adjust: exact; /* Força impressão das cores no Chrome */
+                color-adjust: exact; /* Padrão */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Conferência de Notas Fiscais</h1>
+                <h2 id="page-subtitle">Carregando...</h2>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" class="btn btn-back">Voltar ao Menu</a>
+                <button id="print-button" class="btn btn-print">Imprimir Lista</button>
+            </div>
+        </div>
+
+        <div id="status-message">
+            <p>Buscando vendas...</p>
+        </div>
+
+        <table class="conference-table" id="conference-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Cód. Venda</th>
+                    <th>Cliente</th>
+                    <th>Status (Envio)</th>
+                    <th>Status NFe</th>
+                    <th>Nº da Nota</th>
+                    <th>Chave de Acesso</th>
+                </tr>
+            </thead>
+            <tbody id="conference-tbody">
+                </tbody>
+        </table>
+    </div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // --- Elementos do DOM ---
+    const subtitle = document.getElementById('page-subtitle');
+    const statusMessage = document.getElementById('status-message');
+    const table = document.getElementById('conference-table');
+    const tbody = document.getElementById('conference-tbody');
+    const printButton = document.getElementById('print-button');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 1. Autenticação (padrão do seu index.html)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            window.location.href = '/login.html';
+            return;
+        }
+
+        // 2. Pegar Parâmetros da URL
+        const params = new URLSearchParams(window.location.search);
+        const janela = params.get('janela');
+        const dataStr = params.get('data'); // Formato "YYYY-MM-DD"
+
+        if (!janela || !dataStr) {
+            subtitle.innerText = 'Erro!';
+            statusMessage.innerHTML = '<p>Parâmetros "janela" e "data" são obrigatórios na URL.</p>';
+            return;
+        }
+
+        const dataFormatada = new Date(dataStr + 'T12:00:00').toLocaleDateString('pt-BR');
+        subtitle.innerText = `Janela: ${janela}  |  Data: ${dataFormatada}`;
+
+        // 3. Iniciar o processo
+        await iniciarConferencia(janela, dataStr);
+    });
+
+    // --- Botão de Imprimir ---
+    printButton.addEventListener('click', () => {
+        window.print();
+    });
+
+    /**
+     * Função principal que orquestra a conferência
+     */
+    async function iniciarConferencia(janela, dataStr) {
+        try {
+            // --- PASSO 1: Buscar as Vendas (Envios) ---
+            
+            // Criar o range de data (ex: 2025-11-04T00:00:00 ... 2025-11-05T00:00:00)
+            const startOfDay = new Date(dataStr + 'T00:00:00-03:00'); // Fuso -03:00
+            const endOfDay = new Date(startOfDay);
+            endOfDay.setDate(endOfDay.getDate() + 1);
+
+            statusMessage.innerHTML = `<p>Buscando envios para a janela "${janela}"...</p>`;
+
+            const { data: envios, error: enviosError } = await supabase
+                .from('envios')
+                .select('id, codigo_venda, cliente_nome, status')
+                .eq('janela_coleta', janela)
+                .gte('created_at', startOfDay.toISOString())
+                .lt('created_at', endOfDay.toISOString())
+                .order('codigo_venda', { ascending: true });
+
+            if (enviosError) throw new Error(`Erro ao buscar envios: ${enviosError.message}`);
+            
+            if (envios.length === 0) {
+                statusMessage.innerHTML = `<p>Nenhum envio encontrado para esta janela/data.</p>`;
+                return;
+            }
+
+            statusMessage.style.display = 'none';
+            table.style.display = 'table';
+
+            // --- PASSO 2: Verificar as Notas (Uma por uma) ---
+            
+            // Renderiza todas as linhas primeiro com status "Verificando"
+            for (const envio of envios) {
+                const tr = document.createElement('tr');
+                tr.id = `envio-${envio.id}`;
+                tr.innerHTML = `
+                    <td>${envio.codigo_venda}</td>
+                    <td>${envio.cliente_nome}</td>
+                    <td>${envio.status}</td>
+                    <td class="status-cell status-checking" id="status-${envio.id}">Verificando...</td>
+                    <td id="num-${envio.id}">...</td>
+                    <td id="chave-${envio.id}">...</td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Agora, chama a função para cada linha e atualiza o status
+            for (const envio of envios) {
+                const statusCell = document.getElementById(`status-${envio.id}`);
+                const numCell = document.getElementById(`num-${envio.id}`);
+                const chaveCell = document.getElementById(`chave-${envio.id}`);
+
+                // Usamos a função 'get-nota-details' que você forneceu
+                // Passando o 'dataStr' para 'de' e 'ate'
+                const { data: nfeData, error: funcError } = await supabase.functions.invoke('get-nota-details', {
+                    body: {
+                        codigoVenda: envio.codigo_venda,
+                        de: dataStr,
+                        ate: dataStr
+                    }
+                });
+
+                if (funcError || nfeData.error) {
+                    const errorMsg = funcError ? funcError.message : nfeData.error;
+                    statusCell.innerText = 'Não Encontrada';
+                    statusCell.className = 'status-cell status-error';
+                    console.warn(`Venda ${envio.codigo_venda}: ${errorMsg}`);
+                } else {
+                    // SUCESSO! A função retornou os dados da NFe
+                    statusCell.innerText = 'Emitida';
+                    statusCell.className = 'status-cell status-ok';
+                    numCell.innerText = nfeData.numero || 'N/D';
+                    chaveCell.innerText = nfeData.chave || 'N/D';
+                }
+            }
+
+        } catch (error) {
+            statusMessage.style.display = 'block';
+            statusMessage.innerHTML = `<p><b>Erro Crítico:</b> ${error.message}</p>`;
+            console.error(error);
+        }
+    }
+</script>
+</body>
+</html>
