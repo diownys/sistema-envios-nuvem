@@ -6,7 +6,26 @@
  <title>Editar Envios - Sistema de Envios</title>
  <style>
   body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem; }
-  .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; }
+  
+  /* --- NOVO: Container de verificação --- */
+  #auth-status {
+   padding: 2rem;
+   text-align: center;
+   font-size: 1.2rem;
+   color: #555;
+  }
+  
+  /* --- ALTERADO: Container principal começa escondido --- */
+  .container { 
+   background: white; 
+   padding: 2rem 3rem; 
+   border-radius: 8px; 
+   box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+   width: 100%; 
+   max-width: 1200px;
+   display: none; /* Começa escondido */
+  }
+  
   h1 { color: #333; margin-bottom: 1.5rem; text-align: center; }
 
   .search-box {
@@ -58,7 +77,6 @@
   .results-table td:nth-child(5) { min-width: 200px; } /* Criado em */
   .results-table td:nth-child(6) { min-width: 200px; } /* Atualizado em */
 
-  /* Estilos para os inputs dentro da tabela */
   .results-table input[type="text"],
   .results-table input[type="datetime-local"],
   .results-table select {
@@ -67,13 +85,13 @@
    font-size: 0.95rem;
    border: 1px solid #ccc;
    border-radius: 4px;
-   box-sizing: border-box; /* Garante que o padding não quebre o layout */
+   box-sizing: border-box; 
   }
   
   .save-button {
    padding: 0.5rem 1rem;
    font-size: 0.9rem;
-   background-color: #28a745; /* Verde */
+   background-color: #28a745; 
    color: white;
    border: none;
    border-radius: 4px;
@@ -87,7 +105,11 @@
 </head>
 <body>
  
- <div class="container">
+ <div id="auth-status">
+  <h2>Verificando permissões...</h2>
+ </div>
+ 
+ <div class="container" id="main-container">
   <h1>Editar Envios</h1>
   
   <div class="search-box">
@@ -123,24 +145,64 @@
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // --- Elementos do DOM ---
+  const mainContainer = document.getElementById('main-container');
+  const authStatus = document.getElementById('auth-status');
   const searchInput = document.getElementById('search-input');
   const searchButton = document.getElementById('search-button');
   const searchStatus = document.getElementById('search-status');
   const resultsTable = document.getElementById('results-table');
   const resultsTbody = document.getElementById('results-tbody');
-
-  // --- Adiciona o Event Listener no Botão de Busca ---
-  searchButton.addEventListener('click', buscarEnvios);
   
-  // Permite buscar com "Enter" no campo de input
-  searchInput.addEventListener('keyup', (event) => {
-    if (event.key === 'Enter') {
+  // --- NOVO: Função de Verificação de Admin ---
+  async function checkAdminAccess() {
+   const { data: { user } } = await supabase.auth.getUser();
+
+   if (!user) {
+    authStatus.innerHTML = `<h2>Acesso Negado</h2><p>Você precisa estar logado para acessar esta página.</p><p><a href="/login.html">Ir para o Login</a></p>`;
+    return;
+   }
+
+   const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+   if (error || !profile) {
+    console.error("Erro ao buscar perfil:", error?.message);
+    authStatus.innerHTML = `<h2>Erro</h2><p>Não foi possível verificar suas permissões.</p>`;
+    return;
+   }
+
+   if (profile.role === 'admin') {
+    // É Admin! Esconde a mensagem e mostra o conteúdo principal
+    authStatus.style.display = 'none';
+    mainContainer.style.display = 'block';
+    
+    // --- Adiciona os Event Listeners DEPOIS de confirmar o acesso ---
+    searchButton.addEventListener('click', buscarEnvios);
+    searchInput.addEventListener('keyup', (event) => {
+     if (event.key === 'Enter') {
       buscarEnvios();
-    }
-  });
+     }
+    });
+    resultsTbody.addEventListener('click', async (event) => {
+     if (event.target.classList.contains('save-button')) {
+      const button = event.target;
+      const envioId = button.dataset.envioId;
+      await salvarAlteracoes(envioId, button);
+     }
+    });
+    // --- Fim dos Event Listeners ---
+    
+   } else {
+    // Não é Admin
+    authStatus.innerHTML = `<h2>Acesso Negado</h2><p>Esta página é restrita para administradores.</p>`;
+   }
+  }
 
   /**
-   * 1. Função principal de busca
+   * 1. Função principal de busca (sem alterações)
    */
   async function buscarEnvios() {
    const searchTerm = searchInput.value.trim();
@@ -150,22 +212,19 @@
     return;
    }
 
-   // Desabilita o botão e mostra status
    searchButton.disabled = true;
    searchButton.innerText = 'Buscando...';
    searchStatus.style.display = 'block';
    searchStatus.innerText = 'Buscando...';
-   resultsTable.style.display = 'none'; // Esconde a tabela antiga
-   resultsTbody.innerHTML = ''; // Limpa resultados antigos
+   resultsTable.style.display = 'none'; 
+   resultsTbody.innerHTML = ''; 
 
-   // Busca no Supabase usando 'ilike' para ser case-insensitive e parcial
    const { data: envios, error } = await supabase
     .from('envios')
     .select('id, codigo_venda, cliente_nome, janela_coleta, status, created_at, updated_at')
     .ilike('codigo_venda', `%${searchTerm}%`)
-    .order('created_at', { ascending: false }); // Mais recentes primeiro
+    .order('created_at', { ascending: false }); 
 
-   // Reabilita o botão
    searchButton.disabled = false;
    searchButton.innerText = 'Buscar';
 
@@ -179,24 +238,21 @@
     return;
    }
 
-   // Esconde a mensagem de status e mostra a tabela
    searchStatus.style.display = 'none';
    resultsTable.style.display = 'table';
 
-   // Popula a tabela com os resultados
    envios.forEach(envio => {
     renderEnvioRow(envio);
    });
   }
   
   /**
-   * 2. Renderiza uma linha (<tr>) na tabela para cada envio
+   * 2. Renderiza uma linha (<tr>) na tabela (sem alterações)
    */
   function renderEnvioRow(envio) {
     const tr = document.createElement('tr');
     tr.id = `envio-row-${envio.id}`;
     
-    // Converte as datas UTC do Supabase para o formato local do input
     const createdAtLocal = formatISODateToInput(envio.created_at);
     const updatedAtLocal = formatISODateToInput(envio.updated_at);
 
@@ -226,33 +282,20 @@
     resultsTbody.appendChild(tr);
   }
 
-  // --- Adiciona o Event Listener na Tabela (Event Delegation) ---
-  resultsTbody.addEventListener('click', async (event) => {
-   if (event.target.classList.contains('save-button')) {
-    const button = event.target;
-    const envioId = button.dataset.envioId;
-    await salvarAlteracoes(envioId, button);
-   }
-  });
-
   /**
-   * 3. Salva as alterações de uma linha específica
+   * 3. Salva as alterações de uma linha (sem alterações)
    */
   async function salvarAlteracoes(envioId, button) {
    button.disabled = true;
    button.innerText = 'Salvando...';
 
-   // Pega a linha (tr) pai do botão
    const row = document.getElementById(`envio-row-${envioId}`);
    
-   // Pega os valores dos inputs DENTRO daquela linha
    const janelaColeta = row.querySelector('.edit-janela').value;
    const status = row.querySelector('.edit-status').value;
    const createdAtInput = row.querySelector('.edit-created-at').value;
    const updatedAtInput = row.querySelector('.edit-updated-at').value;
 
-   // Converte a data/hora local do input para o formato ISO (UTC)
-   // que o Supabase espera
    const createdAtISO = createdAtInput ? new Date(createdAtInput).toISOString() : null;
    const updatedAtISO = updatedAtInput ? new Date(updatedAtInput).toISOString() : null;
 
@@ -274,31 +317,27 @@
     alert('Envio atualizado com sucesso!');
     button.disabled = false;
     button.innerText = 'Salvo!';
-    // Muda a cor para indicar que salvou
-    button.style.backgroundColor = '#17a2b8'; // Um azul/ciano
+    button.style.backgroundColor = '#17a2b8'; 
     setTimeout(() => {
      button.innerText = 'Salvar';
-     button.style.backgroundColor = '#28a745'; // Volta ao verde
+     button.style.backgroundColor = '#28a745'; 
     }, 2000);
    }
   }
 
   /**
-   * Helper: Converte data ISO (UTC) do Supabase para o formato
-   * 'YYYY-MM-DDTHH:MM' (Local) que o <input type="datetime-local"> espera.
+   * Helper: Converte data ISO (UTC) para input (sem alterações)
    */
   function formatISODateToInput(isoString) {
    if (!isoString) return '';
-   
    const date = new Date(isoString);
-   
-   // Ajusta do UTC para o fuso horário local do navegador
    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-   
-   // Formata para 'YYYY-MM-DDTHH:MM'
    return date.toISOString().slice(0, 16);
   }
 
+  // --- INICIA A VERIFICAÇÃO DE ACESSO ---
+  checkAdminAccess();
+  
  </script>
 </body>
 </html>
