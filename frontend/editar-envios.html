@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Editar Envios - Sistema de Envios</title>
+ <style>
+  body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem; }
+  .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 1200px; }
+  h1 { color: #333; margin-bottom: 1.5rem; text-align: center; }
+
+  .search-box {
+   display: flex;
+   gap: 0.5rem;
+   margin-bottom: 1.5rem;
+  }
+  #search-input {
+   flex-grow: 1;
+   padding: 0.75rem;
+   font-size: 1rem;
+   border: 1px solid #ccc;
+   border-radius: 5px;
+  }
+  #search-button {
+   padding: 0.75rem 1.5rem;
+   font-size: 1rem;
+   background-color: #007bff;
+   color: white;
+   border: none;
+   border-radius: 5px;
+   cursor: pointer;
+  }
+  #search-button:hover { background-color: #0056b3; }
+  #search-button:disabled { background-color: #ccc; }
+
+  #results-container {
+   max-height: 60vh;
+   overflow-y: auto;
+  }
+  #search-status { color: #555; text-align: center; }
+
+  .results-table {
+   width: 100%;
+   border-collapse: collapse;
+   display: none; /* Começa oculto */
+  }
+  .results-table th, .results-table td {
+   border: 1px solid #ddd;
+   padding: 0.75rem;
+   text-align: left;
+   vertical-align: middle;
+  }
+  .results-table th { background-color: #f9f9f9; }
+  .results-table td:nth-child(1) { min-width: 100px; } /* Cod Venda */
+  .results-table td:nth-child(2) { min-width: 150px; } /* Cliente */
+  .results-table td:nth-child(3) { min-width: 120px; } /* Janela */
+  .results-table td:nth-child(4) { min-width: 120px; } /* Status */
+  .results-table td:nth-child(5) { min-width: 200px; } /* Criado em */
+  .results-table td:nth-child(6) { min-width: 200px; } /* Atualizado em */
+
+  /* Estilos para os inputs dentro da tabela */
+  .results-table input[type="text"],
+  .results-table input[type="datetime-local"],
+  .results-table select {
+   width: 100%;
+   padding: 0.5rem;
+   font-size: 0.95rem;
+   border: 1px solid #ccc;
+   border-radius: 4px;
+   box-sizing: border-box; /* Garante que o padding não quebre o layout */
+  }
+  
+  .save-button {
+   padding: 0.5rem 1rem;
+   font-size: 0.9rem;
+   background-color: #28a745; /* Verde */
+   color: white;
+   border: none;
+   border-radius: 4px;
+   cursor: pointer;
+   width: 100%;
+  }
+  .save-button:hover { background-color: #218838; }
+  .save-button:disabled { background-color: #ccc; }
+
+ </style>
+</head>
+<body>
+ 
+ <div class="container">
+  <h1>Editar Envios</h1>
+  
+  <div class="search-box">
+   <input type="text" id="search-input" placeholder="Buscar por Código da Venda...">
+   <button id="search-button">Buscar</button>
+  </div>
+  
+  <div id="results-container">
+   <p id="search-status">Aguardando busca...</p>
+   <table class="results-table" id="results-table">
+    <thead>
+     <tr>
+      <th>Cód. Venda</th>
+      <th>Cliente</th>
+      <th>Janela Coleta</th>
+      <th>Status</th>
+      <th>Criado em (created_at)</th>
+      <th>Atualizado em (updated_at)</th>
+      <th>Ação</th>
+     </tr>
+    </thead>
+    <tbody id="results-tbody">
+     </tbody>
+   </table>
+  </div>
+ </div>
+
+ <script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // --- Elementos do DOM ---
+  const searchInput = document.getElementById('search-input');
+  const searchButton = document.getElementById('search-button');
+  const searchStatus = document.getElementById('search-status');
+  const resultsTable = document.getElementById('results-table');
+  const resultsTbody = document.getElementById('results-tbody');
+
+  // --- Adiciona o Event Listener no Botão de Busca ---
+  searchButton.addEventListener('click', buscarEnvios);
+  
+  // Permite buscar com "Enter" no campo de input
+  searchInput.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter') {
+      buscarEnvios();
+    }
+  });
+
+  /**
+   * 1. Função principal de busca
+   */
+  async function buscarEnvios() {
+   const searchTerm = searchInput.value.trim();
+
+   if (!searchTerm) {
+    alert('Por favor, digite um código de venda para buscar.');
+    return;
+   }
+
+   // Desabilita o botão e mostra status
+   searchButton.disabled = true;
+   searchButton.innerText = 'Buscando...';
+   searchStatus.style.display = 'block';
+   searchStatus.innerText = 'Buscando...';
+   resultsTable.style.display = 'none'; // Esconde a tabela antiga
+   resultsTbody.innerHTML = ''; // Limpa resultados antigos
+
+   // Busca no Supabase usando 'ilike' para ser case-insensitive e parcial
+   const { data: envios, error } = await supabase
+    .from('envios')
+    .select('id, codigo_venda, cliente_nome, janela_coleta, status, created_at, updated_at')
+    .ilike('codigo_venda', `%${searchTerm}%`)
+    .order('created_at', { ascending: false }); // Mais recentes primeiro
+
+   // Reabilita o botão
+   searchButton.disabled = false;
+   searchButton.innerText = 'Buscar';
+
+   if (error) {
+    searchStatus.innerText = `Erro na busca: ${error.message}`;
+    return;
+   }
+
+   if (envios.length === 0) {
+    searchStatus.innerText = `Nenhum envio encontrado com o código "${searchTerm}".`;
+    return;
+   }
+
+   // Esconde a mensagem de status e mostra a tabela
+   searchStatus.style.display = 'none';
+   resultsTable.style.display = 'table';
+
+   // Popula a tabela com os resultados
+   envios.forEach(envio => {
+    renderEnvioRow(envio);
+   });
+  }
+  
+  /**
+   * 2. Renderiza uma linha (<tr>) na tabela para cada envio
+   */
+  function renderEnvioRow(envio) {
+    const tr = document.createElement('tr');
+    tr.id = `envio-row-${envio.id}`;
+    
+    // Converte as datas UTC do Supabase para o formato local do input
+    const createdAtLocal = formatISODateToInput(envio.created_at);
+    const updatedAtLocal = formatISODateToInput(envio.updated_at);
+
+    tr.innerHTML = `
+     <td>${envio.codigo_venda}</td>
+     <td>${envio.cliente_nome}</td>
+     <td>
+      <input type="text" class="edit-janela" value="${envio.janela_coleta || ''}">
+     </td>
+     <td>
+      <select class="edit-status">
+       <option value="Pendente" ${envio.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+       <option value="Confirmado" ${envio.status === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+       <option value="Cancelado" ${envio.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+       </select>
+     </td>
+     <td>
+      <input type="datetime-local" class="edit-created-at" value="${createdAtLocal}">
+     </td>
+     <td>
+      <input type="datetime-local" class="edit-updated-at" value="${updatedAtLocal}">
+     </td>
+     <td>
+      <button class="save-button" data-envio-id="${envio.id}">Salvar</button>
+     </td>
+    `;
+    resultsTbody.appendChild(tr);
+  }
+
+  // --- Adiciona o Event Listener na Tabela (Event Delegation) ---
+  resultsTbody.addEventListener('click', async (event) => {
+   if (event.target.classList.contains('save-button')) {
+    const button = event.target;
+    const envioId = button.dataset.envioId;
+    await salvarAlteracoes(envioId, button);
+   }
+  });
+
+  /**
+   * 3. Salva as alterações de uma linha específica
+   */
+  async function salvarAlteracoes(envioId, button) {
+   button.disabled = true;
+   button.innerText = 'Salvando...';
+
+   // Pega a linha (tr) pai do botão
+   const row = document.getElementById(`envio-row-${envioId}`);
+   
+   // Pega os valores dos inputs DENTRO daquela linha
+   const janelaColeta = row.querySelector('.edit-janela').value;
+   const status = row.querySelector('.edit-status').value;
+   const createdAtInput = row.querySelector('.edit-created-at').value;
+   const updatedAtInput = row.querySelector('.edit-updated-at').value;
+
+   // Converte a data/hora local do input para o formato ISO (UTC)
+   // que o Supabase espera
+   const createdAtISO = createdAtInput ? new Date(createdAtInput).toISOString() : null;
+   const updatedAtISO = updatedAtInput ? new Date(updatedAtInput).toISOString() : null;
+
+   const { error } = await supabase
+    .from('envios')
+    .update({ 
+     janela_coleta: janelaColeta,
+     status: status,
+     created_at: createdAtISO,
+     updated_at: updatedAtISO
+    })
+    .eq('id', envioId);
+
+   if (error) {
+    alert(`Erro ao salvar: ${error.message}`);
+    button.disabled = false;
+    button.innerText = 'Salvar';
+   } else {
+    alert('Envio atualizado com sucesso!');
+    button.disabled = false;
+    button.innerText = 'Salvo!';
+    // Muda a cor para indicar que salvou
+    button.style.backgroundColor = '#17a2b8'; // Um azul/ciano
+    setTimeout(() => {
+     button.innerText = 'Salvar';
+     button.style.backgroundColor = '#28a745'; // Volta ao verde
+    }, 2000);
+   }
+  }
+
+  /**
+   * Helper: Converte data ISO (UTC) do Supabase para o formato
+   * 'YYYY-MM-DDTHH:MM' (Local) que o <input type="datetime-local"> espera.
+   */
+  function formatISODateToInput(isoString) {
+   if (!isoString) return '';
+   
+   const date = new Date(isoString);
+   
+   // Ajusta do UTC para o fuso horário local do navegador
+   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+   
+   // Formata para 'YYYY-MM-DDTHH:MM'
+   return date.toISOString().slice(0, 16);
+  }
+
+ </script>
+</body>
+</html>
