@@ -4,54 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conferência de Notas Fiscais</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
-        .header { margin-bottom: 1rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
-        h1 { color: #333; }
-        .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-        .controls input { flex-grow: 1; padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
-        #qr-reader { width: 100%; max-width: 500px; margin: 1rem auto; border: 1px solid #ddd; display: none; }
-        .table-container { background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 1400px; 
+            margin: 0 auto;
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 1.5rem; 
+            flex-wrap: wrap; 
+        }
+        .header h1 { color: #333; margin: 0; font-size: 1.8rem; }
+        .header-actions { display: flex; gap: 1rem; }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            text-decoration: none;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-print { background-color: #17a2b8; }
+        .btn-back { background-color: #6c757d; }
+        .btn:hover { background-color: #0056b3; }
+        
+        /* --- Novos Controles de Filtro --- */
+        .controls { 
+            display: flex; 
+            gap: 1rem; 
+            margin-bottom: 1.5rem; 
+            flex-wrap: wrap; 
+        }
+        .controls select, .controls input {
+            padding: 0.8rem;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        .controls select { flex-basis: 300px; }
+        .controls input { flex-basis: 300px; flex-grow: 1; }
+
+        #status-message {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 1rem;
+            display: none; /* Começa oculto */
+        }
+
+        .table-container { background: white; border-radius: 8px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f8f9fa; }
-        .btn { padding: 0.5rem 1rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; border: none; cursor: pointer; color: white; }
-        .btn-scan { background-color: #17a2b8; }
 
-        /* --- NOVOS ESTILOS PARA STATUS DA NOTA --- */
         .status-cell { font-weight: bold; }
         .status-ok { color: #28a745; }
         .status-error { color: #dc3545; }
         .status-checking { color: #6c757d; }
+
+        /* --- Estilos de Impressão --- */
+        @media print {
+            body { background-color: #fff; padding: 0; margin: 0; }
+            .header, .controls, .btn-back {
+                display: none !important; /* Esconde cabeçalho e filtros */
+            }
+            .container {
+                box-shadow: none; border: none; padding: 0;
+                width: 100%; max-width: 100%;
+            }
+            .table-container { box-shadow: none; border-radius: 0; }
+            table { font-size: 10pt; }
+            th, td { padding: 5px; }
+            .status-cell {
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <a href="/index.html">&larr; Voltar para o Menu</a>
-        <h1 id="titulo-janela">Carregando...</h1>
-    </div>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 id="titulo-janela">Conferência de Notas Fiscais</h1>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" class="btn btn-back">Voltar ao Menu</a>
+                <button id="print-button" class="btn btn-print">Imprimir Lista</button>
+            </div>
+        </div>
 
-    <div class="controls">
-        <input type="text" id="search-input" placeholder="Busque por cliente, cód. venda, nº nota...">
-        <button id="scan-button" class="btn btn-scan">Escanear</button>
-    </div>
-    <div id="qr-reader"></div>
+        <div class="controls">
+            <select id="janela-select">
+                <option value="">Carregando janelas de hoje...</option>
+            </select>
+            <input type="text" id="search-input" placeholder="Busque por cliente, cód. venda, nº nota...">
+        </div>
+        
+        <div id="status-message"></div>
 
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>Cód. Venda</th>
-                    <th>Status (Envio)</th>
-                    <th>Status NFe</th>
-                    <th>Nº da Nota</th>
-                    <th>Chave de Acesso</th>
-                </tr>
-            </thead>
-            <tbody id="vendas-table-body"></tbody>
-        </table>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Cód. Venda</th>
+                        <th>Status (Envio)</th>
+                        <th>Status NFe</th>
+                        <th>Nº da Nota</th>
+                        <th>Chave de Acesso</th>
+                    </tr>
+                </thead>
+                <tbody id="vendas-table-body">
+                    <tr><td colspan="6" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 <script type="module">
@@ -61,52 +142,179 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    let todasAsVendas = []; 
-    let janelaColeta = '';
-    let dataStringGlobal = ''; // Para guardar a data da busca
+    // --- Variáveis Globais ---
+    let todasAsVendas = []; // Guarda os dados da janela selecionada
+    let dataStringGlobal = ''; // "YYYY-MM-DD"
+    let startOfDayGlobal = ''; // ISO String
+    let endOfDayGlobal = '';   // ISO String
 
+    // --- Elementos do DOM ---
+    const janelaSelect = document.getElementById('janela-select');
+    const searchInput = document.getElementById('search-input');
+    const printButton = document.getElementById('print-button');
+    const tableBody = document.getElementById('vendas-table-body');
+    const statusMessage = document.getElementById('status-message');
+
+    /**
+     * Helper para formatar data (YYYY-MM-DD)
+     */
+    function getYYYYMMDD(date) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    /**
+     * PASSO 1: Iniciação da Página
+     */
     document.addEventListener('DOMContentLoaded', async () => {
+        // 1. Autenticação
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { 
             window.location.href = '/login.html'; 
             return; 
         }
 
-        const params = new URLSearchParams(window.location.search);
-        janelaColeta = params.get('janela');
-        dataStringGlobal = params.get('data'); // Salva a data globalmente
-        
-        if (!janelaColeta || !dataStringGlobal) { 
-            document.getElementById('titulo-janela').textContent = "Erro: Parâmetros (Janela ou Data) não especificados."; 
-            return; 
-        }
-        
-        const [year, month, day] = dataStringGlobal.split('-').map(Number);
-        const selectedDate = new Date(year, month - 1, day);
-        const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setDate(endOfDay.getDate() + 1);
+        // 2. Definir "Hoje" (Filtro Oculto)
+        // Usamos fuso -03:00 (Brasil) para garantir que "hoje"
+        // seja o dia correto, independente do fuso do servidor.
+        const hoje = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+        dataStringGlobal = getYYYYMMDD(hoje); // "YYYY-MM-DD"
 
-        document.getElementById('titulo-janela').textContent = `Conferência NFe de ${selectedDate.toLocaleDateString('pt-BR')} - Janela: ${janelaColeta}`;
+        const startOfDay = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
+        const endOfDay = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1, 0, 0, 0);
         
+        startOfDayGlobal = startOfDay.toISOString();
+        endOfDayGlobal = endOfDay.toISOString();
+
+        // 3. Carregar o filtro de janelas
+        await carregarFiltroJanelas(startOfDayGlobal, endOfDayGlobal);
+        
+        // 4. Configurar Event Listeners
         setupEventListeners();
-        
-        // Inicia o processo
-        await carregarVendasEVerificarNotas(janelaColeta, startOfDay.toISOString(), endOfDay.toISOString());
     });
 
     /**
-     * PASSO 1: Renderiza a tabela (com placeholders para NFe)
+     * PASSO 2: Carrega o <select> com as janelas do dia
+     */
+    async function carregarFiltroJanelas(startISO, endISO) {
+        try {
+            // Busca apenas envios de HOJE
+            const { data, error } = await supabase
+                .from('envios')
+                .select('janela_coleta')
+                .gte('created_at', startISO)
+                .lt('created_at', endISO);
+            
+            if (error) throw error;
+
+            // Pega nomes únicos de janelas
+            const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela'))];
+            janelasUnicas.sort();
+
+            janelaSelect.innerHTML = '<option value="">-- Selecione uma Janela --</option>';
+            if (janelasUnicas.length === 0) {
+                janelaSelect.innerHTML = '<option value="">Nenhuma janela hoje</option>';
+                return;
+            }
+
+            janelasUnicas.forEach(janela => {
+                janelaSelect.innerHTML += `<option value="${janela}">${janela}</option>`;
+            });
+
+        } catch (error) {
+            janelaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+            showStatusMessage(`Erro ao carregar janelas: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * PASSO 3: Configura os botões e filtros
+     */
+    function setupEventListeners() {
+        // Quando o usuário MUDA a janela no dropdown
+        janelaSelect.addEventListener('change', () => {
+            const janelaSelecionada = janelaSelect.value;
+            if (janelaSelecionada) {
+                // Chama a função principal de carregamento
+                carregarVendasEVerificarNotas(janelaSelecionada, startOfDayGlobal, endOfDayGlobal, dataStringGlobal);
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>';
+                todasAsVendas = [];
+            }
+        });
+
+        // Filtro de busca
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const vendasFiltradas = todasAsVendas.filter(venda => 
+                (venda.cliente_nome?.toLowerCase().includes(query)) ||
+                (venda.codigo_venda?.toLowerCase().includes(query)) ||
+                (venda.nfe_status?.toLowerCase().includes(query)) ||
+                (venda.nfe_numero?.toLowerCase().includes(query)) ||
+                (venda.nfe_chave?.toLowerCase().includes(query))
+            );
+            
+            renderTable(vendasFiltradas);
+            // Re-popula os dados da NFe que já temos
+            repopularNFeData(vendasFiltradas);
+        });
+
+        // Botão de Imprimir
+        printButton.addEventListener('click', () => {
+            // Ajusta o título para impressão
+            const dataFormatada = new Date(dataStringGlobal + 'T12:00:00').toLocaleDateString('pt-BR');
+            document.title = `Conferencia NFe - ${janelaSelect.value} - ${dataFormatada}`;
+            window.print();
+            // Restaura o título
+            document.title = "Conferência de Notas Fiscais";
+        });
+    }
+
+    /**
+     * PASSO 4: Carrega as vendas e inicia a verificação das notas
+     */
+    async function carregarVendasEVerificarNotas(janela, startDate, endDate, dataBusca) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Carregando vendas...</td></tr>'; 
+        try {
+            // 1. Busca as vendas da janela
+            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
+                body: { 
+                    janela: janela,
+                    start_date: startDate, 
+                    end_date: endDate 
+                } 
+            });
+            if (error) throw error;
+            todasAsVendas = data.vendas;
+            
+            if (todasAsVendas.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma venda encontrada para esta janela.</td></tr>'; 
+                 return;
+            }
+            
+            // 2. Renderiza a tabela com "..."
+            renderTable(todasAsVendas);
+            
+            // 3. Inicia a verificação das notas em paralelo
+            await verificarNotas(todasAsVendas, dataBusca);
+
+        } catch (error) {
+            tableBody.innerHTML = `<tr><td colspan="6">Erro ao carregar vendas: ${error.message}</td></tr>`; 
+        }
+    }
+
+    /**
+     * PASSO 5: Renderiza a tabela (com placeholders para NFe)
      */
     function renderTable(vendasParaRenderizar) {
-        const tableBody = document.getElementById('vendas-table-body');
         tableBody.innerHTML = '';
         if (vendasParaRenderizar.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
             return;
         }
         vendasParaRenderizar.forEach(venda => {
-            // Adiciona placeholders para NFe que serão preenchidos
             tableBody.innerHTML += `
                 <tr id="venda-row-${venda.id}">
                     <td>${venda.cliente_nome || 'N/A'}</td>
@@ -121,40 +329,9 @@
     }
 
     /**
-     * PASSO 2: Carrega as vendas e inicia a verificação das notas
-     */
-    async function carregarVendasEVerificarNotas(janela, startDate, endDate) {
-        const tableBody = document.getElementById('vendas-table-body');
-        tableBody.innerHTML = '<tr><td colspan="6">Carregando vendas...</td></tr>'; 
-        try {
-            // 1. Busca as vendas da janela
-            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
-                body: { 
-                    janela: janela,
-                    start_date: startDate, 
-                    end_date: endDate 
-                } 
-            });
-            if (error) throw error;
-            todasAsVendas = data.vendas;
-            
-            // 2. Renderiza a tabela com "Verificando..."
-            renderTable(todasAsVendas);
-            
-            // 3. Inicia a verificação das notas em paralelo
-            // Usamos a dataStringGlobal para a busca na API PharmUp
-            await verificarNotas(todasAsVendas, dataStringGlobal);
-
-        } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="6">Erro ao carregar vendas: ${error.message}</td></tr>`; 
-        }
-    }
-
-    /**
-     * PASSO 3: Verifica a NFe de cada venda na lista e atualiza o DOM
+     * PASSO 6: Verifica a NFe de cada venda e atualiza o DOM
      */
     async function verificarNotas(listaDeVendas, dataBusca) {
-        // Cria um array de promessas para rodar em paralelo
         const promessas = listaDeVendas.map(venda => {
             return supabase.functions.invoke('get-nota-details', {
                 body: {
@@ -164,118 +341,52 @@
                 }
             })
             .then(({ data: nfeData, error: funcError }) => {
-                // Atualiza o DOM para esta venda específica
-                const statusCell = document.getElementById(`status-nfe-${venda.id}`);
-                const numCell = document.getElementById(`num-nfe-${venda.id}`);
-                const chaveCell = document.getElementById(`chave-nfe-${venda.id}`);
-
-                // Se a célula não existir (ex: usuário filtrou rápido), ignora
-                if (!statusCell) return; 
-
+                // Salva os dados no objeto para o filtro
                 if (funcError || nfeData.error) {
-                    const errorMsg = funcError ? funcError.message : nfeData.error;
-                    statusCell.innerText = 'Não Encontrada';
-                    statusCell.className = 'status-cell status-error';
-                    // Guarda o erro na variável local para fins de filtro
                     venda.nfe_status = 'Não Encontrada'; 
                 } else {
-                    statusCell.innerText = 'Emitida';
-                    statusCell.className = 'status-cell status-ok';
-                    numCell.innerText = nfeData.numero || 'N/D';
-                    chaveCell.innerText = nfeData.chave || 'N/D';
-                    
-                    // Guarda os dados na variável local para o filtro funcionar
                     venda.nfe_status = 'Emitida';
                     venda.nfe_numero = nfeData.numero;
                     venda.nfe_chave = nfeData.chave;
                 }
+                // Atualiza o DOM
+                repopularNFeData([venda]); // Atualiza só esta linha
             });
         });
-
-        // Espera todas as verificações terminarem
         await Promise.allSettled(promessas);
     }
 
     /**
-     * PASSO 4: Configura os filtros e scanner (lógica de vendas.html)
+     * Helper: Atualiza o DOM com os dados de NFe (usado na Carga e no Filtro)
      */
-    function setupEventListeners() {
-        const searchInput = document.getElementById('search-input');
-        const scanButton = document.getElementById('scan-button');
-        const qrReaderDiv = document.getElementById('qr-reader');
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        let isScannerRunning = false;
-        
-        searchInput.addEventListener('input', () => {
-            const query = searchInput.value.toLowerCase();
-            const vendasFiltradas = todasAsVendas.filter(venda => 
-                (venda.cliente_nome?.toLowerCase().includes(query)) ||
-                (venda.codigo_venda?.toLowerCase().includes(query)) ||
-                (venda.ordem_manipulacao?.toLowerCase().includes(query)) ||
-                // Adiciona filtro para os dados da NFe
-                (venda.nfe_status?.toLowerCase().includes(query)) ||
-                (venda.nfe_numero?.toLowerCase().includes(query)) ||
-                (venda.nfe_chave?.toLowerCase().includes(query))
-            );
-            
-            // Re-renderiza a tabela com os itens filtrados
-            renderTable(vendasFiltradas);
-            
-            // Re-verifica as notas APENAS dos itens filtrados
-            // Isso é rápido pois os dados já estão no objeto 'venda'
-            // (A função 'verificarNotas' agora apenas atualiza o DOM)
-            vendasFiltradas.forEach(venda => {
-                const statusCell = document.getElementById(`status-nfe-${venda.id}`);
-                if (!statusCell) return;
+    function repopularNFeData(listaDeVendas) {
+        listaDeVendas.forEach(venda => {
+            const statusCell = document.getElementById(`status-nfe-${venda.id}`);
+            if (!statusCell) return; // Linha não está visível (foi filtrada)
 
-                if (venda.nfe_status === 'Emitida') {
-                    statusCell.innerText = 'Emitida';
-                    statusCell.className = 'status-cell status-ok';
-                    document.getElementById(`num-nfe-${venda.id}`).innerText = venda.nfe_numero || 'N/D';
-                    document.getElementById(`chave-nfe-${venda.id}`).innerText = venda.nfe_chave || 'N/D';
-                } else if (venda.nfe_status === 'Não Encontrada') {
-                    statusCell.innerText = 'Não Encontrada';
-                    statusCell.className = 'status-cell status-error';
-                }
-                // Se 'nfe_status' for indefinido, ele permanece '...'
-            });
-        });
-
-        // Lógica do Scanner (exatamente como em vendas.html)
-        const qrCodeSuccessCallback = (decodedText) => {
-            searchInput.value = decodedText;
-            searchInput.dispatchEvent(new Event('input'));
-            stopScanner();
-        };
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-        function startScanner() {
-            qrReaderDiv.style.display = 'block';
-            scanButton.textContent = 'Fechar Câmera';
-            isScannerRunning = true;
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                .catch(err => alert("Erro ao iniciar a câmera. Verifique as permissões."));
-        }
-
-        function stopScanner() {
-            if (isScannerRunning) {
-                html5QrCode.stop().then(() => {
-                    qrReaderDiv.style.display = 'none';
-                    scanButton.textContent = 'Escanear';
-                    isScannerRunning = false;
-                }).catch(err => {
-                    console.error("Falha ao parar o scanner, mas continuando...", err);
-                    qrReaderDiv.style.display = 'none';
-                    scanButton.textContent = 'Escanear';
-                    isScannerRunning = false;
-                });
+            if (venda.nfe_status === 'Emitida') {
+                statusCell.innerText = 'Emitida';
+                statusCell.className = 'status-cell status-ok';
+                document.getElementById(`num-nfe-${venda.id}`).innerText = venda.nfe_numero || 'N/D';
+                document.getElementById(`chave-nfe-${venda.id}`).innerText = venda.nfe_chave || 'N/D';
+            } else if (venda.nfe_status === 'Não Encontrada') {
+                statusCell.innerText = 'Não Encontrada';
+                statusCell.className = 'status-cell status-error';
             }
-        }
-
-        scanButton.addEventListener('click', () => {
-            isScannerRunning ? stopScanner() : startScanner();
+            // Se o status for indefinido, ele permanece "..." (status-checking)
         });
     }
+
+    /**
+     * Helper: Mostra mensagens de status
+     */
+    function showStatusMessage(message, type = 'info') {
+        statusMessage.textContent = message;
+        statusMessage.style.display = 'block';
+        statusMessage.style.backgroundColor = type === 'error' ? '#f8d7da' : '#fff3cd';
+        statusMessage.style.color = type === 'error' ? '#721c24' : '#856404';
+    }
+
 </script>
 </body>
 </html>
