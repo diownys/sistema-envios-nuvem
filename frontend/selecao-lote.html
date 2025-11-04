@@ -19,10 +19,30 @@
   .janela-button:hover { background-color: #0056b3; }
   .janela-button:disabled { background-color: #ccc; }
   #status { margin-top: 1rem; color: #555; }
+   .header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 2rem; 
+    flex-wrap: wrap; 
+}
+.header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        @media (min-width: 768px) {
+            body { padding: 2rem; }
+            .header-controls { margin-bottom: 0; }
+            .grid-container { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+            .btn-import { font-size: 1rem; }
+        }
  </style>
 </head>
 <body>
- 
+     <div class="header">
+        <div class="header-buttons">
+            <a href="index.html" class="btn-import" style="background-color: #007bff;">Menu inicial</a>
+            <a href="selecao-lote2.html" class="btn-import" style="background-color: #17a2b8;">Admin</a>
+        </div>
+    </div>
  <div class="container">
   <h1>Selecionar Janela</h1>
   <h2 id="data-hoje"></h2>   <div id="lista-janelas">
