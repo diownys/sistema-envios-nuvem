@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Importar Envios</title>
 
-  <!-- TROCAR pelos valores do seu projeto -->
-  <meta name="supabase-url"  content="https://nfsuisftzddegihyhoha.supabase.co">
-  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <style>
     body { font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f4f9; margin:0; }
@@ -35,62 +33,65 @@
     <div class="row">
       <div id="log">Selecione um arquivo .xlsx ou .csv para importar.</div>
     </div>
-    <a href="/index.htm">Voltar ao Dashboard</a>
+    <a href="/index.html">Voltar ao Dashboard</a>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+  <script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
 
-    const SUPABASE_URL  = document.querySelector('meta[name="supabase-url"]').content
-    const SUPABASE_ANON = document.querySelector('meta[name="supabase-anon"]').content
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
-    const FUNCTIONS_URL = `https://${projectRef}.functions.supabase.co/import-excel`
+    // Padronizando a URL da função (v1)
+    const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1/import-excel`;
 
-    const btn = document.getElementById('btnEnviar')
-    const fileInput = document.getElementById('file')
-    const logDiv = document.getElementById('log')
-    const log = (msg, type='') => { logDiv.textContent = msg; logDiv.className = type }
+    const btn = document.getElementById('btnEnviar');
+    const fileInput = document.getElementById('file');
+    const logDiv = document.getElementById('log');
+    const log = (msg, type='') => { logDiv.textContent = msg; logDiv.className = type };
 
     btn.addEventListener('click', async () => {
       try {
-        const file = fileInput.files?.[0]
-        if (!file) return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error')
+        const file = fileInput.files?.[0];
+        if (!file) return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error');
 
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) {
-          log('Sessão expirada. Redirecionando para o login...', 'error')
-          setTimeout(() => location.href = '/login.html', 1500)
-          return
+          log('Sessão expirada. Redirecionando para o login...', 'error');
+          setTimeout(() => location.href = '/login.html', 1500);
+          return;
         }
 
-        btn.disabled = true
-        log('Enviando e processando o arquivo, aguarde…')
+        btn.disabled = true;
+        log('Enviando e processando o arquivo, aguarde…');
 
-        const form = new FormData()
-        form.append('file', file, file.name)
+        const form = new FormData();
+        form.append('file', file, file.name);
 
+        // Mantivemos o fetch puro pois FormData funciona melhor assim do que no invoke wrapper às vezes
         const resp = await fetch(FUNCTIONS_URL, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${session.access_token}` },
           body: form
-        })
+        });
 
-        let text = await resp.text()
-        let payload
-        try { payload = JSON.parse(text) } catch { payload = { error: text } }
+        let text = await resp.text();
+        let payload;
+        try { payload = JSON.parse(text); } catch { payload = { error: text }; }
 
-        if (!resp.ok) throw new Error(payload?.error || 'Falha ao importar.')
+        if (!resp.ok) throw new Error(payload?.error || 'Falha ao importar.');
 
-        log(payload?.message || 'Importação concluída com sucesso!', 'success')
-        fileInput.value = ''
+        log(payload?.message || 'Importação concluída com sucesso!', 'success');
+        fileInput.value = '';
       } catch (err) {
-        log('Erro: ' + (err?.message ?? err), 'error')
+        log('Erro: ' + (err?.message ?? err), 'error');
       } finally {
-        btn.disabled = false
+        btn.disabled = false;
       }
-    })
+    });
   </script>
 </body>
 </html>

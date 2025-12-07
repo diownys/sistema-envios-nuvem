@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Venda</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 2rem; }
         .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -84,8 +87,10 @@
         <div id="success-message" class="message success" style="display: none;"></div>
     </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
+    
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
 
@@ -97,7 +102,7 @@
     const lookupStatus = document.getElementById('lookup-status');
     const codigoVendaInput = document.getElementById('codigo_venda');
     const buscarPharmUpBtn = document.getElementById('buscar-pharmup-btn');
-    const ufLoader = document.getElementById('uf-loader'); // Spinner da UF
+    const ufLoader = document.getElementById('uf-loader'); 
 
     // Mapeamento dos campos JSON para IDs do formulário
     const fieldMapping = {
@@ -113,16 +118,13 @@
     };
 
     // Lista de IDs dos campos afetados pela busca automática
-    // (não necessariamente todos serão preenchidos, mas podem ser limpados ou ter estado alterado)
     const autoAffectedFields = ['ordem_manipulacao', 'cliente_nome', 'valor_venda', 'janela_coleta', 'endereco', 'cidade', 'uf'];
-
 
     let editMode = false;
     let envioId = null;
     let originalJanela = '';
 
     document.addEventListener('DOMContentLoaded', async () => {
-        // ... (lógica de autenticação e verificação de modo edição/adição - sem mudanças) ...
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) { window.location.href = '/login.html'; return; }
 
@@ -174,7 +176,6 @@
              const marcaSelect = document.getElementById('marca');
              if (marcaSelect && envio.marca) {
                  marcaSelect.value = envio.marca;
-                 // marcaSelect.disabled = true; // Desabilitar select na edição?
              }
 
             pageTitle.textContent = `Editar Venda #${envio.codigo_venda}`;
@@ -192,7 +193,6 @@
 
     // Função que lida com a busca no PharmUp
     async function handlePharmUpLookup() {
-        // ... (lógica inicial de pegar código, mostrar status, desabilitar - sem mudanças) ...
         const codigo = codigoVendaInput.value.trim();
         if (!codigo) {
             clearAutoFilledFields();
@@ -218,7 +218,6 @@
                  }
             }
 
-            // MUDANÇA: Torna populateFormWithPharmUpData async para esperar a busca de CEP
             await populateFormWithPharmUpData(data);
             lookupStatus.textContent = 'Dados carregados do PharmUp! Verifique e edite se necessário.';
             lookupStatus.className = 'message success';
@@ -230,22 +229,22 @@
             clearAutoFilledFields();
 
         } finally {
-            disableFormFieldsDuringLookup(false); // Reabilita campos (editáveis)
+            disableFormFieldsDuringLookup(false); 
         }
     }
 
-    // --- NOVA FUNÇÃO: Busca UF pelo CEP usando ViaCEP ---
+    // --- Busca UF pelo CEP usando ViaCEP ---
     async function fetchUfFromCep(cep) {
-        if (!cep) return null; // Retorna null se não houver CEP
-        const cleanCep = cep.replace(/\D/g, ''); // Remove traços, pontos, etc.
+        if (!cep) return null; 
+        const cleanCep = cep.replace(/\D/g, ''); 
         if (cleanCep.length !== 8) {
             console.warn("CEP inválido para busca de UF:", cep);
-            return null; // CEP inválido
+            return null; 
         }
 
         const ufInput = document.getElementById('uf');
-        ufLoader.style.display = 'inline-block'; // Mostra spinner da UF
-        if (ufInput) ufInput.disabled = true; // Desabilita campo UF durante busca
+        ufLoader.style.display = 'inline-block'; 
+        if (ufInput) ufInput.disabled = true; 
 
         try {
             const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
@@ -256,15 +255,15 @@
             if (data.erro) {
                 throw new Error(`CEP ${cep} não encontrado pelo ViaCEP.`);
             }
-            return data.uf || null; // Retorna a UF ou null se não encontrar
+            return data.uf || null; 
         } catch (error) {
             console.error("Erro ao buscar UF pelo CEP:", error.message);
-            lookupStatus.textContent += ` (Aviso: Falha ao buscar UF para o CEP ${cep})`; // Adiciona aviso
-            lookupStatus.className = 'message success'; // Mantém sucesso, mas com aviso
-            return null; // Retorna null em caso de erro
+            lookupStatus.textContent += ` (Aviso: Falha ao buscar UF para o CEP ${cep})`; 
+            lookupStatus.className = 'message success'; 
+            return null; 
         } finally {
-             ufLoader.style.display = 'none'; // Esconde spinner da UF
-             if (ufInput) ufInput.disabled = false; // Reabilita campo UF
+             ufLoader.style.display = 'none'; 
+             if (ufInput) ufInput.disabled = false; 
         }
     }
 
@@ -274,7 +273,6 @@
         clearAutoFilledFields();
 
         for (const jsonKey in fieldMapping) {
-            // Não preenche UF diretamente aqui, será feito pela busca de CEP
             if (jsonKey === 'EnderecoEntrega.UF') continue;
 
             const formId = fieldMapping[jsonKey];
@@ -291,7 +289,6 @@
                  else if (formId !== 'endereco' && formId !== 'ordem_manipulacao') {
                     element.value = data[jsonKey];
                  }
-                 // NÃO adiciona readonly aqui
             }
         }
 
@@ -300,16 +297,15 @@
         if (ordemInput) {
              const ordem = (data.itens && data.itens.length > 0) ? data.itens[0]['ManipulacaoOrdem.Codigo'] : null;
              if (ordem && ordem !== '0'){
-                 ordemInput.value = `${ordem}$M`; // MUDANÇA: Adiciona $M
+                 ordemInput.value = `${ordem}$M`; 
              } else {
                  ordemInput.value = '';
              }
-             // ordemInput.readOnly = false; // Já é false por padrão
         }
 
         // Preenche Endereço Combinado (incluindo Bairro e CEP)
         const enderecoInput = document.getElementById('endereco');
-        const cep = data['EnderecoEntrega.Cep'] || ''; // Pega o CEP
+        const cep = data['EnderecoEntrega.Cep'] || ''; 
         if (enderecoInput) {
             const rua = data['EnderecoEntrega.Endereco'] || '';
             const num = data['EnderecoEntrega.Numero'] || '';
@@ -319,34 +315,31 @@
             if (num) enderecoCompleto += `, ${num}`;
             if (compl) enderecoCompleto += ` - ${compl}`;
             if (bairro) enderecoCompleto += `, ${bairro}`;
-            if (cep) enderecoCompleto += `, CEP: ${cep}`; // MUDANÇA: Adiciona CEP
+            if (cep) enderecoCompleto += `, CEP: ${cep}`; 
             enderecoInput.value = enderecoCompleto.trim();
-            // enderecoInput.readOnly = false; // Já é false por padrão
         }
 
-        // MUDANÇA: Chama a busca da UF pelo CEP
+        // Chama a busca da UF pelo CEP
         const ufInput = document.getElementById('uf');
         if (ufInput) {
             const ufEncontrada = await fetchUfFromCep(cep);
             if (ufEncontrada) {
                 ufInput.value = ufEncontrada;
             } else {
-                ufInput.value = ''; // Limpa se não encontrar ou der erro
+                ufInput.value = ''; 
             }
-            // ufInput.readOnly = false; // Já é false por padrão
         }
     }
 
-    // Função que limpa os campos preenchidos automaticamente (garante editabilidade)
+    // Função que limpa os campos preenchidos automaticamente
     function clearAutoFilledFields() {
          autoAffectedFields.forEach(id => {
              const element = document.getElementById(id);
              if(element) {
                  element.value = '';
-                 element.readOnly = false; // Garante que fiquem editáveis
+                 element.readOnly = false; 
              }
          });
-         // Volta a marca para o padrão Neuvye ao limpar
          const marcaSelect = document.getElementById('marca');
          if (marcaSelect) marcaSelect.value = 'Neuvye';
     }
@@ -372,7 +365,6 @@
                  const element = document.getElementById(id);
                  if (element) element.readOnly = false;
              });
-             // Garante que o código de venda esteja habilitado para FormData
              if (codigoVendaInput.readOnly) codigoVendaInput.readOnly = false;
         }
 
@@ -385,7 +377,7 @@
                  const element = document.getElementById(id);
                  if (element) element.readOnly = true;
              });
-             codigoVendaInput.readOnly = true; // Sempre readonly na edição
+             codigoVendaInput.readOnly = true; 
         }
 
         let redirectUrl = '/index.html';
@@ -422,7 +414,6 @@
              successMessage.style.display = 'none';
              form.querySelector('button[type="submit"]').disabled = false;
 
-             // Re-aplica `readOnly` para o caso de erro, garantindo o estado original na edição
              if (editMode) {
                 fieldsToReapplyReadonly.forEach(id => {
                      const element = document.getElementById(id);

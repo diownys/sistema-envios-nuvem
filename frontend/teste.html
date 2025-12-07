@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador e Impressor de Vendas PharmUp</title>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
@@ -45,12 +45,15 @@
     <pre><code id="jsonResultado">Aguardando busca...</code></pre>
 
     <script>
+        // ✅ 2. Inicialização via window.supabase (sem type="module")
+        const { createClient } = window.supabase;
+
         // --- Chaves do Supabase ---
         const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
         
         // --- Inicializa o cliente ---
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- Elementos do HTML ---
         const input = document.getElementById('codigoVendaInput');
@@ -69,7 +72,7 @@
             if (event.key === 'Enter') buscarVenda();
         });
 
-        // --- Função BUSCAR VENDA (mantida do primeiro código) ---
+        // --- Função BUSCAR VENDA ---
         async function buscarVenda() {
             const codigo = input.value.trim();
             if (!codigo) {
@@ -108,7 +111,7 @@
             }
         }
 
-        // --- Função GERAR HTML IMPRESSÃO (AJUSTADO PARA O SEGUNDO LAYOUT) ---
+        // --- Função GERAR HTML IMPRESSÃO ---
         function gerarHtmlImpressao(dados) {
             const v = (key) => dados[key] || '';
             const agora = new Date();
@@ -122,14 +125,10 @@
                     qrCodeContent = `${primeiroCodigo}$M`;
                 }
             }
-            // OBS: No seu segundo layout, o QR Code é uma imagem estática (Base64) e não um div para ser gerado.
-            // Para manter a funcionalidade de geração de QR Code, manteremos o uso do `qrcode-container` no HTML de impressão.
 
             let itensHtml = '';
             if (dados.itens && Array.isArray(dados.itens)) {
                 dados.itens.forEach(item => {
-                    // Mantive os estilos inline de cores e alinhamento do seu PRIMEIRO código
-                    // e usei a estrutura de colunas do SEGUNDO layout.
                     itensHtml += `
                         <tr>
                             <td style="font-size:10px;color:black; background-color:white;text-align:left; font-weight: bold">${item['ManipulacaoOrdem.Codigo'] || ''}</td>
@@ -144,7 +143,7 @@
                 });
             }
 
-            // Monta o HTML completo com os estilos e estrutura do SEGUNDO CÓDIGO.
+            // Monta o HTML completo
             return `
                 <!DOCTYPE html>
                 <html lang="pt-br" style="text-align:right;">
@@ -167,7 +166,7 @@
                         table#tableType3 td, table#tableType3 th { border-right: 1px solid #808080; border-left: 1px solid #808080; }
                         table#tableType4 td, table#tableType4 th { border-top: 1px solid #808080; }
                         table#tableType5 td, table#tableType5 th { border-bottom: 1px solid #808080; }
-                        /* Estilos para o QR Code (para aparecer igual a uma imagem de 100x100) */
+                        /* Estilos para o QR Code */
                         #qrcode-container { height: 100px; width: 100px; }
                     </style>
                 </head>
@@ -257,7 +256,6 @@
                             
                             if (qrDiv && qrContent) {
                                 try {
-                                    // Aumentei o tamanho do QR Code para 100x100 para corresponder ao estilo do segundo layout
                                     new QRCode(qrDiv, {
                                         text: qrContent,
                                         width: 100,
@@ -267,7 +265,6 @@
                                 } catch (e) { console.error("Erro QR Code:", e); qrDiv.innerHTML = "Erro QR"; }
                             }
                             
-                            // Mantém o timeout para garantir que o QR Code seja renderizado antes da impressão
                             setTimeout(() => {
                                 try { window.print(); }
                                 catch (e) { console.error("Erro Impressão:", e); alert("Erro ao imprimir."); }
@@ -279,7 +276,7 @@
             `;
         }
 
-        // --- Função IMPRIMIR VENDA (mantida do primeiro código) ---
+        // --- Função IMPRIMIR VENDA ---
         function imprimirVenda() {
             if (!dadosVendaAtual) {
                 alert("Nenhum dado de venda para imprimir. Busque uma venda primeiro.");

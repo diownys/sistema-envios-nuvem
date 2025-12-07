@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Gerar Romaneio</title>
 
-  <meta name="supabase-url"  content="https://nfsuisftzddegihyhoha.supabase.co">
-  <meta name="supabase-anon" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <style>
     body { font-family: sans-serif; margin: 24px; background:#f7f7fb; }
@@ -17,6 +16,7 @@
     input, select, button { padding:8px 10px; border:1px solid #d0d0da; border-radius:6px; font-size: 1rem; }
     button { background:#007bff; color:#fff; cursor:pointer; }
     button:disabled { background:#c7c7d3; cursor:not-allowed; }
+    button:hover:not(:disabled) { background:#0056b3; }
     #log { white-space:pre-wrap; background:#fafafa; border:1px dashed #ddd; padding:10px; border-radius:6px; margin-top:10px; min-height:3em; }
     a { color:#6c757d; text-decoration:none; }
   </style>
@@ -47,24 +47,18 @@
     </div>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+  <script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
+
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- SETUP INICIAL ---
     const logDiv = document.getElementById('log');
     const log = (m) => { logDiv.textContent = m; };
-
-    const getMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.content?.trim() || '';
-    
-    // --- CORREÇÃO APLICADA AQUI ---
-    const SUPABASE_URL  = getMeta('supabase-url');
-    const SUPABASE_ANON = getMeta('supabase-anon');
-
-    if (!SUPABASE_URL || !SUPABASE_ANON) {
-      log("Configuração ausente: preencha as meta tags supabase-url e supabase-anon.");
-      throw new Error('Metas de configuração ausentes.');
-    }
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
     const startInput = document.getElementById('start');
     const endInput   = document.getElementById('end');

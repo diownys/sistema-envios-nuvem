@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Teste da Função (Etiqueta 110x150mm)</title>
   
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
@@ -160,12 +160,13 @@
 
 
   <script>
-    // 1. Configure com suas chaves do Supabase
-    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; // <-- Substitua
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; // <-- Substitua
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
+
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
-    // 2. Inicialize o cliente
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // 3. Seleciona os elementos da página
     const btnTestar = document.getElementById('btnTestar');
@@ -184,7 +185,7 @@
     inputAte.value = dataFim;
 
 
-    // 5. NOVO: Função que constrói o HTML da ETIQUETA
+    // 5. Função que constrói o HTML da ETIQUETA
     function getHtmlDaEtiqueta(nfe, codigoVenda) {
       const dest = nfe.destinatario;
       const emit = nfe.emitente;
@@ -235,7 +236,7 @@
       `;
     }
 
-    // 6. Adiciona o clique no botão (MODIFICADO)
+    // 6. Adiciona o clique no botão
     btnTestar.addEventListener('click', async () => {
       const codigoVenda = inputCodigoVenda.value; 
       const de = inputDe.value;
@@ -261,11 +262,11 @@
         // 8. Sucesso! Mostra o JSON
         outputJSON.textContent = JSON.stringify(data, null, 2);
         
-        // 9. NOVO: Renderiza a Etiqueta
+        // 9. Renderiza a Etiqueta
         const htmlEtiqueta = getHtmlDaEtiqueta(data, codigoVenda);
         etiquetaContainer.innerHTML = htmlEtiqueta;
 
-        // 10. NOVO: Gera o QR Code
+        // 10. Gera o QR Code
         const qrDiv = document.getElementById("qrcode-container");
         if (qrDiv) {
           qrDiv.innerHTML = ""; // Limpa o QR anterior

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conferência de Notas Fiscais</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
         .container { 
@@ -132,8 +135,9 @@
         </div>
     </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
     
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
@@ -287,12 +291,12 @@
 
     /**
      * =================================================================
-     * FUNÇÃO MODIFICADA
+     * FUNÇÃO COM LÓGICA DE 90 DIAS MANTIDA
      * =================================================================
      */
     async function verificarNotas(listaDeVendas, dataBuscaHoje) {
         
-        // --- INÍCIO DA MUDANÇA ---
+        // --- INÍCIO DA MUDANÇA (MANTIDA) ---
         // 1. Definir a data final (hoje)
         const dataFim = dataBuscaHoje; 
         
@@ -311,8 +315,8 @@
             return supabase.functions.invoke('get-nota-details', {
                 body: {
                     codigoVenda: venda.codigo_venda,
-                    de: dataInicioStr, // <-- MUDADO
-                    ate: dataFim        // <-- MUDADO
+                    de: dataInicioStr, // <-- MANTIDO
+                    ate: dataFim        // <-- MANTIDO
                 }
             })
             .then(({ data: nfeData, error: funcError }) => {
@@ -327,9 +331,6 @@
         });
         await Promise.allSettled(promessas);
     }
-    // =================================================================
-    // FIM DA MODIFICAÇÃO
-    // =================================================================
 
     function repopularNFeData(listaDeVendas) {
         listaDeVendas.forEach(venda => {

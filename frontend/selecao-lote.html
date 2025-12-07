@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Selecionar Lote - Sistema de Envios</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
 <style>
  body { font-family: sans-serif; background-color: #f4f4f9; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem 0; }
  .container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 500px; }
@@ -82,8 +85,9 @@
 
 <div id="admin-panel-placeholder"></div>
 
-<script type="module">
- import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+<script>
+ // ✅ 2. Inicialização via window.supabase (sem type="module")
+ const { createClient } = window.supabase;
 
  const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
@@ -140,7 +144,7 @@
  // --- FIM DA LÓGICA DE ADMIN ---
  }
 
- // --- Função para criar o lote (sem alterações) ---
+ // --- Função para criar o lote ---
  async function selecionarJanela(button, nomeJanela) {
  button.disabled = true;
  button.innerText = 'Processando...';
@@ -223,12 +227,12 @@
   adminHTML += `
    <li class="admin-item" id="admin-envio-${envio.id}">
     <div>
-     <span><b>Janela:</b> ${envio.janela_coleta || 'N/D'}</span>
-     <span><b>Venda:</b> ${envio.codigo_venda}</span>
-     <span><b>Vols:</b> ${envio.volumes}</span>
+      <span><b>Janela:</b> ${envio.janela_coleta || 'N/D'}</span>
+      <span><b>Venda:</b> ${envio.codigo_venda}</span>
+      <span><b>Vols:</b> ${envio.volumes}</span>
     </div>
     <button class="revert-button" data-envio-id="${envio.id}">
-     Reverter para Pendente
+      Reverter para Pendente
     </button>
    </li>
   `;
@@ -257,9 +261,7 @@
  button.innerText = 'Revertendo...';
 
  // Vamos chamar a sua Edge Function 'reverter-envio'
- // Isso é MAIS SEGURO e centraliza sua regra de negócio
  const { error } = await supabase.functions.invoke('reverter-envio', {
-  // A função 'reverter-envio' provavelmente espera o ID no body
   body: { envio_id: parseInt(envioId) } 
  });
 
@@ -270,9 +272,6 @@
   button.disabled = false;
  } else {
   // Sucesso!
-  // A forma mais FÁCIL e ROBUSTA de garantir que ambas as listas
-  // (botões de janela e painel de admin) sejam atualizadas
-  // é simplesmente recarregar a página.
   alert('Envio revertido para "Pendente" com sucesso!');
   window.location.reload();
  }

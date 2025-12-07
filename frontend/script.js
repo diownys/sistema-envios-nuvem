@@ -1,4 +1,3 @@
-// --- CONFIGURAÇÕES GERAIS ---
 import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 const URL_ANIVERSARIANTES = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=0&single=true&output=csv';
 const URL_RECONHECIMENTOS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=1414872186&single=true&output=csv';
@@ -345,17 +344,20 @@ function updateClock() {
 function updateJanelaBlocks(janelas) {
     const container = document.getElementById('janela-stats-blocks');
     if (!container) return;
+    
     container.innerHTML = ''; 
+    
     if (!janelas || janelas.length === 0) {
         container.innerHTML = '<p class="no-data-message">Nenhuma coleta pendente.</p>';
         return;
     }
-    janelas.sort((a, b) => a.janela_coleta.localeCompare(b.janela_coleta));
-    const maxPendentes = Math.max(...janelas.map(item => item.total), 0);
+    janelas.sort((a, b) => a.janela_coleta.localeCompare(b.janela_coleta));  
     janelas.forEach(item => {
-        let fontSize = 1.4;
-        if (maxPendentes > 0) { fontSize = 1.2 + ((item.total / maxPendentes) * 1.8); }
-        container.innerHTML += `<div class="janela-block"><div class="janela-block-name">${item.janela_coleta}</div><div class="janela-block-value" style="font-size: ${fontSize.toFixed(1)}em;">${item.total}</div></div>`;
+        container.innerHTML += `
+            <div class="janela-block">
+                <div class="janela-block-name">${item.janela_coleta}</div>
+                <div class="janela-block-value">${item.total}</div>
+            </div>`;
     });
 }
 
@@ -582,4 +584,3 @@ function startScrolling(widgetSelector) {
 // Chamar após popular os dados
 startScrolling('#birthday-list');
 startScrolling('#recognition-list');
-

@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vendas da Janela</title>
+    
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
         .header { margin-bottom: 1rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
@@ -75,8 +79,10 @@
         </div>
     </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
+    
     // Chaves Supabase mantidas
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
@@ -103,19 +109,19 @@
             return; 
         }
         
-        // Cálculo das datas de início e fim do dia (Mantido do primeiro)
+        // Cálculo das datas de início e fim do dia
         const [year, month, day] = dataString.split('-').map(Number);
         const selectedDate = new Date(year, month - 1, day);
         const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
         const endOfDay = new Date(startOfDay);
         endOfDay.setDate(endOfDay.getDate() + 1);
 
-        // Atualiza o título para incluir a data (Mantido do primeiro)
+        // Atualiza o título para incluir a data
         document.getElementById('titulo-janela').textContent = `Vendas de ${selectedDate.toLocaleDateString('pt-BR')} - Janela: ${janelaColeta}`;
         
         setupEventListeners();
         
-        // Chama a função com os três parâmetros (Mantido do primeiro)
+        // Chama a função com os três parâmetros
         await carregarVendas(janelaColeta, startOfDay.toISOString(), endOfDay.toISOString());
     });
 
@@ -147,13 +153,13 @@
         });
     }
 
-    // Função de carregamento AGORA aceita os parâmetros de data (Mantida do primeiro)
+    // Função de carregamento AGORA aceita os parâmetros de data
     async function carregarVendas(janela, startDate, endDate) {
         const tableBody = document.getElementById('vendas-table-body');
         // Colspan atualizado para 6
         tableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; 
         try {
-            // Chamada à Edge Function com os 3 parâmetros (Mantida do primeiro)
+            // Chamada à Edge Function com os 3 parâmetros
             const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
                 body: { 
                     janela: janela,
@@ -170,7 +176,6 @@
         }
     }
 
-    // A função setupEventListeners e toda a lógica de busca, QR code e modal de confirmação foi mantida.
     function setupEventListeners() {
         const searchInput = document.getElementById('search-input');
         const tableBody = document.getElementById('vendas-table-body');

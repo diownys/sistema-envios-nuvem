@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vendas Concluídas</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
   <style>
     body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
     .header { margin-bottom: 1rem; } .header a { color: #007bff; text-decoration: none; font-weight: bold; }
@@ -46,8 +49,10 @@
     </table>
   </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+<script>
+    // ✅ 2. Inicialização via window.supabase (sem type="module")
+    const { createClient } = window.supabase;
+    
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
 
@@ -59,7 +64,7 @@
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
 
-    // ATUALIZADO: Função com a correção de fuso horário
+    // Função com a correção de fuso horário
     function aplicarFiltros() {
         const query = searchInput.value.toLowerCase();
         
@@ -132,6 +137,7 @@
     async function carregarConcluidos() {
         tableBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
         try {
+            // Chamando a Edge Function do Supabase
             const { data, error } = await supabase.functions.invoke('get-concluidos');
             if (error) throw error;
             concluidosData = data.concluidos;

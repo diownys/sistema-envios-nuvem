@@ -4,6 +4,9 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
  <title>Editar Envios - Sistema de Envios</title>
+ 
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
  <style>
   body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem; }
   
@@ -137,8 +140,9 @@
   </div>
  </div>
 
- <script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+ <script>
+  // ✅ 2. Inicialização via window.supabase (sem type="module")
+  const { createClient } = window.supabase;
 
   const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
@@ -153,7 +157,7 @@
   const resultsTable = document.getElementById('results-table');
   const resultsTbody = document.getElementById('results-tbody');
   
-  // --- NOVO: Função de Verificação de Admin ---
+  // --- Função de Verificação de Admin ---
   async function checkAdminAccess() {
    const { data: { user } } = await supabase.auth.getUser();
 
@@ -202,7 +206,7 @@
   }
 
   /**
-   * 1. Função principal de busca (sem alterações)
+   * 1. Função principal de busca
    */
   async function buscarEnvios() {
    const searchTerm = searchInput.value.trim();
@@ -247,16 +251,16 @@
   }
   
   /**
-   * 2. Renderiza uma linha (<tr>) na tabela (sem alterações)
+   * 2. Renderiza uma linha (<tr>) na tabela
    */
   function renderEnvioRow(envio) {
-    const tr = document.createElement('tr');
-    tr.id = `envio-row-${envio.id}`;
-    
-    const createdAtLocal = formatISODateToInput(envio.created_at);
-    const updatedAtLocal = formatISODateToInput(envio.updated_at);
+   const tr = document.createElement('tr');
+   tr.id = `envio-row-${envio.id}`;
+   
+   const createdAtLocal = formatISODateToInput(envio.created_at);
+   const updatedAtLocal = formatISODateToInput(envio.updated_at);
 
-    tr.innerHTML = `
+   tr.innerHTML = `
      <td>${envio.codigo_venda}</td>
      <td>${envio.cliente_nome}</td>
      <td>
@@ -267,7 +271,7 @@
        <option value="Pendente" ${envio.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
        <option value="Confirmado" ${envio.status === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
        <option value="Cancelado" ${envio.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
-       </select>
+      </select>
      </td>
      <td>
       <input type="datetime-local" class="edit-created-at" value="${createdAtLocal}">
@@ -279,11 +283,11 @@
       <button class="save-button" data-envio-id="${envio.id}">Salvar</button>
      </td>
     `;
-    resultsTbody.appendChild(tr);
+   resultsTbody.appendChild(tr);
   }
 
   /**
-   * 3. Salva as alterações de uma linha (sem alterações)
+   * 3. Salva as alterações de uma linha
    */
   async function salvarAlteracoes(envioId, button) {
    button.disabled = true;
@@ -326,7 +330,7 @@
   }
 
   /**
-   * Helper: Converte data ISO (UTC) para input (sem alterações)
+   * Helper: Converte data ISO (UTC) para input
    */
   function formatISODateToInput(isoString) {
    if (!isoString) return '';

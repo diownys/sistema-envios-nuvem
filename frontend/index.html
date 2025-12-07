@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard de Envios</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
+    
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
         .header { 
@@ -86,19 +89,20 @@
         <div class="no-data"><p>Carregando menus de coleta...</p></div>
     </div>
 
-<script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    // CHAVES SUPABASE DO PRIMEIRO CÓDIGO MANTIDAS
+<script>
+    // ✅ Inicialização correta via window.supabase
+    const { createClient } = window.supabase;
+    
+    // CHAVES SUPABASE MANTIDAS
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     const dateInput = document.getElementById('date-filter-input');
-    // ID do container padronizado para 'envios-container' conforme o primeiro código
     const container = document.getElementById('envios-container'); 
 
-    // Função para definir a data padrão no input e carregar os dados (mantida)
+    // Função para definir a data padrão no input e carregar os dados
     function setDateAndFetch(date) {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -109,19 +113,21 @@
     }
     
     document.addEventListener('DOMContentLoaded', async () => {
-        // Lógica de Autenticação, Admin e Logout (mantida)
+        // Lógica de Autenticação (Verifica se o usuário está logado)
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             window.location.href = '/login.html';
             return;
         }
 
+        // Verifica se é Admin (Chama função RPC)
         const { data: isAdmin } = await supabase.rpc('is_admin');
         if (isAdmin) {
             const placeholder = document.getElementById('admin-button-placeholder');
             placeholder.innerHTML = `<a href="/admin.html" class="btn-import" style="background-color: #6f42c1;">Painel Admin</a>`;
         }
         
+        // Lógica de Logout
         const logoutButton = document.getElementById('logout-button');
         logoutButton.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -132,15 +138,16 @@
         // Define a data padrão como "hoje" e busca os dados
         setDateAndFetch(new Date());
 
-        // Listener para o filtro de data (mantido)
+        // Listener para o filtro de data
         dateInput.addEventListener('change', () => {
             const [year, month, day] = dateInput.value.split('-').map(Number);
-            const selectedDate = new Date(year, month - 1, day);
+            // Ao criar a data, use o UTC para evitar problemas de fuso horário, se necessário.
+            const selectedDate = new Date(year, month - 1, day); 
             carregarMenuDeColeta(selectedDate);
         });
     });
 
-    // Função de carregamento com o link atualizado (Unificado do segundo código)
+    // Função de carregamento que invoca a Edge Function do Supabase
     async function carregarMenuDeColeta(date) {
         container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
@@ -149,7 +156,7 @@
         endOfDay.setDate(endOfDay.getDate() + 1);
 
         try {
-            // Chama a função Supabase com o filtro de data
+            // Chama a Edge Function do Supabase
             const { data, error } = await supabase.functions.invoke('get-janelas-por-dia', {
                 body: {
                     start_date: startOfDay.toISOString(),
@@ -161,14 +168,15 @@
             
             container.innerHTML = '';
             
-            // Pega a data formatada do input para usar na URL
+            // Pega a data formatada do input para usar na URL de redirecionamento
             const dateString = dateInput.value; 
 
-            if (!data.janelas || data.janelas.length === 0) {
+            if (!data || !data.janelas || data.janelas.length === 0) {
                 container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada para esta data.</p></div>';
             } else {
                 // Lógica de Renderização com Estatísticas
                 data.janelas.forEach(janela => {
+                    // Garantir que os valores sejam numéricos
                     const total = parseInt(janela.total_envios || 0);
                     const confirmados = parseInt(janela.envios_confirmados || 0);
                     const pendentes = total - confirmados;
@@ -187,14 +195,14 @@
                         </a>
                     `;
                 });
+                
+                // Adiciona o card de concluídos no final
+                container.innerHTML += `<a href="concluidos.html" class="menu-card menu-card-special">Ver Vendas Concluídas</a>`;
             }
             
-            // Adiciona o card de concluídos no final
-            container.innerHTML += `<a href="concluidos.html" class="menu-card menu-card-special">Ver Vendas Concluídas</a>`;
-
         } catch (error) {
-            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados: ${error.message}</p></div>`;
-            console.error('Erro ao invocar a função:', error);
+            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados. Verifique o Console (F12).</p></div>`;
+            console.error('Erro ao processar dados ou invocar a função:', error);
         }
     }
 </script>
