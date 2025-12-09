@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+import confetti from 'https://esm.sh/canvas-confetti@1.9.2'
 const URL_ANIVERSARIANTES = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=0&single=true&output=csv';
 const URL_RECONHECIMENTOS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=1414872186&single=true&output=csv';
 const URL_NOTICIAS = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQB3DiiGSQLxI-sHfJjBne3VbH83HA6REnrbcXkCBrWuLkyZh8aaq-TjgGvZqMqJpnc7vfku4thPcOR/pub?gid=645656320&single=true&output=csv';
@@ -13,6 +14,51 @@ let progressChart = null;
 let internasChart = null;
 let externasChart = null;
 let coletasSchedule = []; // Guarda a agenda de coletas para não buscar a cada segundo
+
+// --- VARIÁVEIS DE COMEMORAÇÃO ---
+let jaComemorouHoje = false; // Trava para não repetir a festa
+// const somComemoracao = new Audio('./sucesso.mp3'); // Descomente quando tiver o arquivo de som
+
+// --- FUNÇÃO PARA DISPARAR A FESTA (MODO EMOJIS) ---
+function soltarConfetes() {
+    // Toca som (se estiver configurado)
+    // if (typeof somComemoracao !== 'undefined') somComemoracao.play().catch(e => console.log("Interação necessária:", e));
+
+    var duration = 3 * 1000; // Duração: 3 segundos
+    var end = Date.now() + duration;
+
+    // Configuração dos Emojis (Tamanho e Ícones)
+    var scalar = 4; // Tamanho dos ícones
+    var truck = confetti.shapeFromText({ text: '🚛', scalar });
+    var box = confetti.shapeFromText({ text: '📦', scalar });
+    var trophy = confetti.shapeFromText({ text: '🏆', scalar });
+
+    (function frame() {
+        // Dispara do canto ESQUERDO
+        confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            shapes: [truck, box, trophy],
+            scalar: scalar
+        });
+        
+        // Dispara do canto DIREITO
+        confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            shapes: [truck, box, trophy],
+            scalar: scalar
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
+}
 
 // --- FUNÇÕES DE BUSCA DE DADOS ---
 
@@ -368,10 +414,28 @@ function updateJanelaBlocks(janelas) {
 function updateProgressChart(concluidos, pendentes) {
     const ctx = document.getElementById('progress-chart')?.getContext('2d');
     if (!ctx) return;
+
     const total = (Number(concluidos) || 0) + (Number(pendentes) || 0);
     const percentual = total > 0 ? Math.round((Number(concluidos) / total) * 100) : 0;
+
+    // === LÓGICA DA COMEMORAÇÃO (Adicionado agora) ===
+    if (percentual === 100 && total > 0) {
+        if (!jaComemorouHoje) {
+            console.log("🎉 META BATIDA! Chuva de entregas!");
+            soltarConfetes(); // <--- Chama a função dos emojis
+            jaComemorouHoje = true; // Trava para não repetir
+        }
+    } else if (percentual < 100) {
+        jaComemorouHoje = false; // Reseta se entrar novo pedido
+    }
+    // ================================================
+
     const progressTextEl = document.getElementById('progress-text');
-    if (progressTextEl) progressTextEl.innerHTML = `<div id="progress-percent">${percentual}%</div><div id="progress-details">${concluidos} de ${total}</div>`;
+    // Pinta de dourado se for 100%
+    const corTexto = percentual === 100 ? '#f0c44c' : 'inherit';
+    
+    if (progressTextEl) progressTextEl.innerHTML = `<div id="progress-percent" style="color: ${corTexto}">${percentual}%</div><div id="progress-details">${concluidos} de ${total}</div>`;
+    
     if (progressChart) {
         progressChart.data.datasets[0].data = [concluidos, pendentes];
         progressChart.update();
