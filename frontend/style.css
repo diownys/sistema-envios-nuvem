@@ -1,6 +1,6 @@
 /* --- VARIÁVEIS E BASE (DENSIDADE ALTA) --- */
 :root {
-    --font-size-base: 12px; 
+    --font-size-base: 14px; /* <--- MUDANÇA: Aumentado de 12px para 14px para aumentar os demais elementos */
     --padding-widget: 8px;
     --gap-geral: 10px;
     
@@ -373,6 +373,17 @@ h2 {
 .news-ticker { display: inline-block; white-space: nowrap; padding-left: 100%; animation: ticker 45s linear infinite; }
 .news-ticker p { margin: 0; font-size: 0.85em; color: #ccc; }
 @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+/* --- CORREÇÕES ESPECÍFICAS PARA TIZEN / BUGS DE SVG --- */
+/* Esta seção força o mapa SVG a respeitar o container Flexbox, anulando os bugs do Tizen/D3 */
+.map-widget svg {
+    width: 100% !important; 
+    height: 100% !important; 
+    max-width: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+}
+
 
 /* --- RESPONSIVIDADE MOBILE --- */
 @media (max-width: 1024px) {
