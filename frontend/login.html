@@ -59,7 +59,7 @@
             errorMessageDiv.textContent = ''; // Limpa erros antigos
 
             // LÓGICA DE LOGIN
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });

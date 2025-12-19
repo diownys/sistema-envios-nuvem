@@ -114,7 +114,7 @@
     
     document.addEventListener('DOMContentLoaded', async () => {
         // Lógica de Autenticação (Verifica se o usuário está logado)
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
             window.location.href = '/login.html';
             return;
