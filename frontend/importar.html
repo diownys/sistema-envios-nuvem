@@ -15,10 +15,10 @@
     button { background:#007bff; color:#fff; border:none; padding:.8rem 1.5rem; border-radius:5px; cursor:pointer; font-size:1rem; margin-top:1.5rem; width:100%; transition:background-color .2s; }
     button:disabled { background:#ccc; cursor:not-allowed; }
     button:hover:not(:disabled) { background:#0056b3; }
-    a { display:block; margin-top:1rem; color:#6c757d; text-decoration:none; }
-    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; }
-    .success { color:#155724; }
-    .error   { color:#721c24; }
+    a { display:block; margin-top:1rem; color:#6c757d; text-decoration:none; font-size: 0.9rem; }
+    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; font-size: 0.85rem; border: 1px solid #eee; }
+    .success { color:#155724; background:#d4edda !important; border-color: #c3e6cb !important; }
+    .error   { color:#721c24; background:#f8d7da !important; border-color: #f5c6cb !important; }
   </style>
 </head>
 <body>
@@ -33,61 +33,67 @@
     <div class="row">
       <div id="log">Selecione um arquivo .xlsx ou .csv para importar.</div>
     </div>
-    <a href="/index.html">Voltar ao Dashboard</a>
+    <a href="index.html">← Voltar ao Dashboard</a>
   </div>
 
   <script>
-    // ✅ 2. Inicialização via window.supabase (sem type="module")
     const { createClient } = window.supabase;
 
+    // Configurações mantidas
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Padronizando a URL da função (v1)
-    const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1/import-excel`;
-
     const btn = document.getElementById('btnEnviar');
     const fileInput = document.getElementById('file');
     const logDiv = document.getElementById('log');
-    const log = (msg, type='') => { logDiv.textContent = msg; logDiv.className = type };
+
+    const log = (msg, type='') => { 
+        logDiv.textContent = msg; 
+        logDiv.className = type; 
+    };
 
     btn.addEventListener('click', async () => {
-      try {
-        const file = fileInput.files?.[0];
-        if (!file) return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error');
+      const file = fileInput.files?.[0];
+      
+      if (!file) {
+          return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error');
+      }
 
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
+      try {
+        // 1. Verifica sessão
+        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        
+        if (sessionErr || !session) {
           log('Sessão expirada. Redirecionando para o login...', 'error');
-          setTimeout(() => location.href = '/login.html', 1500);
+          setTimeout(() => location.href = 'login.html', 1500);
           return;
         }
 
         btn.disabled = true;
-        log('Enviando e processando o arquivo, aguarde…');
+        log('Processando arquivo... Isso pode levar alguns segundos.');
 
-        const form = new FormData();
-        form.append('file', file, file.name);
+        // 2. Preparar FormData
+        const formData = new FormData();
+        formData.append('file', file);
 
-        // Mantivemos o fetch puro pois FormData funciona melhor assim do que no invoke wrapper às vezes
-        const resp = await fetch(FUNCTIONS_URL, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
-          body: form
+        // 3. Invocar a função via SDK (mais robusto que fetch manual)
+        const { data, error } = await supabase.functions.invoke('import-excel', {
+            body: formData,
         });
 
-        let text = await resp.text();
-        let payload;
-        try { payload = JSON.parse(text); } catch { payload = { error: text }; }
+        if (error) throw error;
 
-        if (!resp.ok) throw new Error(payload?.error || 'Falha ao importar.');
-
-        log(payload?.message || 'Importação concluída com sucesso!', 'success');
+        // 4. Sucesso
+        log(data?.message || 'Importação concluída com sucesso!', 'success');
         fileInput.value = '';
+
       } catch (err) {
-        log('Erro: ' + (err?.message ?? err), 'error');
+        console.error('Erro na importação:', err);
+        // Tenta extrair mensagem amigável do erro
+        const errorMsg = err.message || 'Erro desconhecido ao processar planilha.';
+        log('Erro: ' + errorMsg, 'error');
       } finally {
         btn.disabled = false;
       }
