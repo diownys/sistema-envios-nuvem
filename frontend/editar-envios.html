@@ -10,7 +10,6 @@
  <style>
   body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 2rem; }
   
-  /* --- NOVO: Container de verificação --- */
   #auth-status {
    padding: 2rem;
    text-align: center;
@@ -18,7 +17,6 @@
    color: #555;
   }
   
-  /* --- ALTERADO: Container principal começa escondido --- */
   .container { 
    background: white; 
    padding: 2rem 3rem; 
@@ -26,7 +24,7 @@
    box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
    width: 100%; 
    max-width: 1200px;
-   display: none; /* Começa escondido */
+   display: none; 
   }
   
   h1 { color: #333; margin-bottom: 1.5rem; text-align: center; }
@@ -64,7 +62,7 @@
   .results-table {
    width: 100%;
    border-collapse: collapse;
-   display: none; /* Começa oculto */
+   display: none; 
   }
   .results-table th, .results-table td {
    border: 1px solid #ddd;
@@ -73,13 +71,7 @@
    vertical-align: middle;
   }
   .results-table th { background-color: #f9f9f9; }
-  .results-table td:nth-child(1) { min-width: 100px; } /* Cod Venda */
-  .results-table td:nth-child(2) { min-width: 150px; } /* Cliente */
-  .results-table td:nth-child(3) { min-width: 120px; } /* Janela */
-  .results-table td:nth-child(4) { min-width: 120px; } /* Status */
-  .results-table td:nth-child(5) { min-width: 200px; } /* Criado em */
-  .results-table td:nth-child(6) { min-width: 200px; } /* Atualizado em */
-
+  
   .results-table input[type="text"],
   .results-table input[type="datetime-local"],
   .results-table select {
@@ -103,7 +95,6 @@
   }
   .save-button:hover { background-color: #218838; }
   .save-button:disabled { background-color: #ccc; }
-
  </style>
 </head>
 <body>
@@ -113,6 +104,7 @@
  </div>
  
  <div class="container" id="main-container">
+  <div style="margin-bottom: 10px;"><a href="index.html" style="text-decoration: none; color: #007bff;">&larr; Voltar ao Menu</a></div>
   <h1>Editar Envios</h1>
   
   <div class="search-box">
@@ -129,24 +121,24 @@
       <th>Cliente</th>
       <th>Janela Coleta</th>
       <th>Status</th>
-      <th>Criado em (created_at)</th>
-      <th>Atualizado em (updated_at)</th>
+      <th>Criado em</th>
+      <th>Atualizado em</th>
       <th>Ação</th>
      </tr>
     </thead>
-    <tbody id="results-tbody">
-     </tbody>
+    <tbody id="results-tbody"></tbody>
    </table>
   </div>
  </div>
 
  <script>
-  // ✅ 2. Inicialização via window.supabase (sem type="module")
   const { createClient } = window.supabase;
 
   const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  // Corrigido para evitar conflitos com a global
+  const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // --- Elementos do DOM ---
   const mainContainer = document.getElementById('main-container');
@@ -159,14 +151,14 @@
   
   // --- Função de Verificação de Admin ---
   async function checkAdminAccess() {
-   const { data: { user } } = await supabase.auth.getUser();
+   const { data: { user } } = await supabaseClient.auth.getUser();
 
    if (!user) {
-    authStatus.innerHTML = `<h2>Acesso Negado</h2><p>Você precisa estar logado para acessar esta página.</p><p><a href="/login.html">Ir para o Login</a></p>`;
+    authStatus.innerHTML = `<h2>Acesso Negado</h2><p>Você precisa estar logado para acessar esta página.</p><p><a href="login.html">Ir para o Login</a></p>`;
     return;
    }
 
-   const { data: profile, error } = await supabase
+   const { data: profile, error } = await supabaseClient
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -179,17 +171,14 @@
    }
 
    if (profile.role === 'admin') {
-    // É Admin! Esconde a mensagem e mostra o conteúdo principal
     authStatus.style.display = 'none';
     mainContainer.style.display = 'block';
     
-    // --- Adiciona os Event Listeners DEPOIS de confirmar o acesso ---
     searchButton.addEventListener('click', buscarEnvios);
     searchInput.addEventListener('keyup', (event) => {
-     if (event.key === 'Enter') {
-      buscarEnvios();
-     }
+     if (event.key === 'Enter') buscarEnvios();
     });
+    
     resultsTbody.addEventListener('click', async (event) => {
      if (event.target.classList.contains('save-button')) {
       const button = event.target;
@@ -197,22 +186,16 @@
       await salvarAlteracoes(envioId, button);
      }
     });
-    // --- Fim dos Event Listeners ---
     
    } else {
-    // Não é Admin
     authStatus.innerHTML = `<h2>Acesso Negado</h2><p>Esta página é restrita para administradores.</p>`;
    }
   }
 
-  /**
-   * 1. Função principal de busca
-   */
   async function buscarEnvios() {
    const searchTerm = searchInput.value.trim();
-
    if (!searchTerm) {
-    alert('Por favor, digite um código de venda para buscar.');
+    alert('Por favor, digite um código de venda.');
     return;
    }
 
@@ -223,7 +206,7 @@
    resultsTable.style.display = 'none'; 
    resultsTbody.innerHTML = ''; 
 
-   const { data: envios, error } = await supabase
+   const { data: envios, error } = await supabaseClient
     .from('envios')
     .select('id, codigo_venda, cliente_nome, janela_coleta, status, created_at, updated_at')
     .ilike('codigo_venda', `%${searchTerm}%`)
@@ -238,7 +221,7 @@
    }
 
    if (envios.length === 0) {
-    searchStatus.innerText = `Nenhum envio encontrado com o código "${searchTerm}".`;
+    searchStatus.innerText = `Nenhum envio encontrado.`;
     return;
    }
 
@@ -246,55 +229,36 @@
    resultsTable.style.display = 'table';
 
    envios.forEach(envio => {
-    renderEnvioRow(envio);
+    const tr = document.createElement('tr');
+    tr.id = `envio-row-${envio.id}`;
+    
+    const createdAtLocal = formatISODateToInput(envio.created_at);
+    const updatedAtLocal = formatISODateToInput(envio.updated_at);
+
+    tr.innerHTML = `
+      <td>${envio.codigo_venda}</td>
+      <td>${envio.cliente_nome}</td>
+      <td><input type="text" class="edit-janela" value="${envio.janela_coleta || ''}"></td>
+      <td>
+       <select class="edit-status">
+        <option value="Pendente" ${envio.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+        <option value="Confirmado" ${envio.status === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+        <option value="Cancelado" ${envio.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+       </select>
+      </td>
+      <td><input type="datetime-local" class="edit-created-at" value="${createdAtLocal}"></td>
+      <td><input type="datetime-local" class="edit-updated-at" value="${updatedAtLocal}"></td>
+      <td><button class="save-button" data-envio-id="${envio.id}">Salvar</button></td>
+    `;
+    resultsTbody.appendChild(tr);
    });
   }
   
-  /**
-   * 2. Renderiza uma linha (<tr>) na tabela
-   */
-  function renderEnvioRow(envio) {
-   const tr = document.createElement('tr');
-   tr.id = `envio-row-${envio.id}`;
-   
-   const createdAtLocal = formatISODateToInput(envio.created_at);
-   const updatedAtLocal = formatISODateToInput(envio.updated_at);
-
-   tr.innerHTML = `
-     <td>${envio.codigo_venda}</td>
-     <td>${envio.cliente_nome}</td>
-     <td>
-      <input type="text" class="edit-janela" value="${envio.janela_coleta || ''}">
-     </td>
-     <td>
-      <select class="edit-status">
-       <option value="Pendente" ${envio.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
-       <option value="Confirmado" ${envio.status === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
-       <option value="Cancelado" ${envio.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
-      </select>
-     </td>
-     <td>
-      <input type="datetime-local" class="edit-created-at" value="${createdAtLocal}">
-     </td>
-     <td>
-      <input type="datetime-local" class="edit-updated-at" value="${updatedAtLocal}">
-     </td>
-     <td>
-      <button class="save-button" data-envio-id="${envio.id}">Salvar</button>
-     </td>
-    `;
-   resultsTbody.appendChild(tr);
-  }
-
-  /**
-   * 3. Salva as alterações de uma linha
-   */
   async function salvarAlteracoes(envioId, button) {
    button.disabled = true;
    button.innerText = 'Salvando...';
 
    const row = document.getElementById(`envio-row-${envioId}`);
-   
    const janelaColeta = row.querySelector('.edit-janela').value;
    const status = row.querySelector('.edit-status').value;
    const createdAtInput = row.querySelector('.edit-created-at').value;
@@ -303,7 +267,7 @@
    const createdAtISO = createdAtInput ? new Date(createdAtInput).toISOString() : null;
    const updatedAtISO = updatedAtInput ? new Date(updatedAtInput).toISOString() : null;
 
-   const { error } = await supabase
+   const { error } = await supabaseClient
     .from('envios')
     .update({ 
      janela_coleta: janelaColeta,
@@ -318,7 +282,7 @@
     button.disabled = false;
     button.innerText = 'Salvar';
    } else {
-    alert('Envio atualizado com sucesso!');
+    alert('Envio atualizado!');
     button.disabled = false;
     button.innerText = 'Salvo!';
     button.style.backgroundColor = '#17a2b8'; 
@@ -329,9 +293,6 @@
    }
   }
 
-  /**
-   * Helper: Converte data ISO (UTC) para input
-   */
   function formatISODateToInput(isoString) {
    if (!isoString) return '';
    const date = new Date(isoString);
@@ -339,9 +300,7 @@
    return date.toISOString().slice(0, 16);
   }
 
-  // --- INICIA A VERIFICAÇÃO DE ACESSO ---
   checkAdminAccess();
-  
  </script>
 </body>
 </html>

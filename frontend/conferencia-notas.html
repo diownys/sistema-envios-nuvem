@@ -10,61 +10,35 @@
     <style>
         body { font-family: sans-serif; background-color: #f4f4f9; margin: 0; padding: 1rem; }
         .container { 
-            background: white; 
-            padding: 2rem; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-            width: 100%; 
-            max-width: 1400px; 
-            margin: 0 auto;
+            background: white; padding: 2rem; border-radius: 8px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; 
+            max-width: 1400px; margin: 0 auto;
         }
         .header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 1.5rem; 
-            flex-wrap: wrap; 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 1.5rem; flex-wrap: wrap; 
         }
         .header h1 { color: #333; margin: 0; font-size: 1.8rem; }
         .header-actions { display: flex; gap: 1rem; }
         .btn {
-            background-color: #007bff;
-            color: white;
-            padding: 0.8rem 1.2rem;
-            text-decoration: none;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
+            background-color: #007bff; color: white; padding: 0.8rem 1.2rem;
+            text-decoration: none; border: none; border-radius: 5px;
+            font-size: 1rem; cursor: pointer; transition: background-color 0.2s;
         }
         .btn-print { background-color: #17a2b8; }
         .btn-back { background-color: #6c757d; }
         .btn:hover { background-color: #0056b3; }
         
-        .controls { 
-            display: flex; 
-            gap: 1rem; 
-            margin-bottom: 1.5rem; 
-            flex-wrap: wrap; 
-        }
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
         .controls select, .controls input {
-            padding: 0.8rem;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-size: 1rem;
+            padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem;
         }
         .controls select { flex-basis: 300px; }
         .controls input { flex-basis: 300px; flex-grow: 1; }
 
         #status-message {
-            background: #fff3cd;
-            color: #856404;
-            padding: 1rem;
-            border-radius: 5px;
-            text-align: center;
-            margin-top: 1rem;
-            display: none; 
+            background: #fff3cd; color: #856404; padding: 1rem;
+            border-radius: 5px; text-align: center; margin-top: 1rem; display: none; 
         }
 
         .table-container { background: white; border-radius: 8px; overflow-x: auto; }
@@ -79,29 +53,18 @@
 
         @media print {
             body { background-color: #fff; padding: 0; margin: 0; }
-            .header, .controls, .btn-back {
-                display: none !important; 
-            }
-            .container {
-                box-shadow: none; border: none; padding: 0;
-                width: 100%; max-width: 100%;
-            }
+            .header, .controls, .btn-back { display: none !important; }
+            .container { box-shadow: none; border: none; padding: 0; width: 100%; max-width: 100%; }
             .table-container { box-shadow: none; border-radius: 0; }
             table { font-size: 10pt; }
             th, td { padding: 5px; }
-            .status-cell {
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div>
-                <h1 id="titulo-janela">Conferência de Notas Fiscais</h1>
-            </div>
+            <h1>Conferência de Notas Fiscais</h1>
             <div class="header-actions">
                 <a href="index.html" class="btn btn-back">Voltar ao Menu</a>
                 <button id="print-button" class="btn btn-print">Imprimir Lista</button>
@@ -136,12 +99,12 @@
     </div>
 
 <script>
-    // ✅ 2. Inicialização via window.supabase (sem type="module")
     const { createClient } = window.supabase;
     
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let todasAsVendas = []; 
     let dataStringGlobal = ''; 
@@ -162,9 +125,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { 
-            window.location.href = '/login.html'; 
+            window.location.href = 'login.html'; 
             return; 
         }
 
@@ -183,7 +146,7 @@
 
     async function carregarFiltroJanelas(startISO, endISO) {
         try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('envios')
                 .select('janela_coleta')
                 .gte('created_at', startISO)
@@ -214,7 +177,6 @@
         janelaSelect.addEventListener('change', () => {
             const janelaSelecionada = janelaSelect.value;
             if (janelaSelecionada) {
-                // Passamos a data de "hoje" (dataStringGlobal) para a função
                 carregarVendasEVerificarNotas(janelaSelecionada, startOfDayGlobal, endOfDayGlobal, dataStringGlobal);
             } else {
                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma janela para carregar as vendas.</td></tr>';
@@ -224,103 +186,72 @@
 
         searchInput.addEventListener('input', () => {
             const query = searchInput.value.toLowerCase();
-            const vendasFiltradas = todasAsVendas.filter(venda => 
-                (venda.cliente_nome?.toLowerCase().includes(query)) ||
-                (venda.codigo_venda?.toLowerCase().includes(query)) ||
-                (venda.nfe_status?.toLowerCase().includes(query)) ||
-                (venda.nfe_numero?.toLowerCase().includes(query))
+            const filtradas = todasAsVendas.filter(v => 
+                v.cliente_nome?.toLowerCase().includes(query) ||
+                v.codigo_venda?.toLowerCase().includes(query) ||
+                v.nfe_numero?.toLowerCase().includes(query)
             );
-            
-            renderTable(vendasFiltradas);
-            repopularNFeData(vendasFiltradas);
+            renderTable(filtradas);
+            repopularNFeData(filtradas);
         });
 
         printButton.addEventListener('click', () => {
-            const dataFormatada = new Date(dataStringGlobal + 'T12:00:00').toLocaleDateString('pt-BR');
-            document.title = `Conferencia NFe - ${janelaSelect.value} - ${dataFormatada}`;
             window.print();
-            document.title = "Conferência de Notas Fiscais";
         });
     }
 
     async function carregarVendasEVerificarNotas(janela, startDate, endDate, dataBusca) {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando vendas...</td></tr>'; 
         try {
-            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
-                body: { 
-                    janela: janela,
-                    start_date: startDate, 
-                    end_date: endDate 
-                } 
+            const { data, error } = await supabaseClient.functions.invoke('get-vendas-por-janela', { 
+                body: { janela, start_date: startDate, end_date: endDate } 
             });
             if (error) throw error;
             todasAsVendas = data.vendas;
             
             if (todasAsVendas.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para esta janela.</td></tr>'; 
+                 tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada.</td></tr>'; 
                  return;
             }
             
             renderTable(todasAsVendas);
-            // Passamos a data de "hoje" (dataBusca) para a função de verificação
             await verificarNotas(todasAsVendas, dataBusca);
 
         } catch (error) {
-            tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`; 
+            tableBody.innerHTML = `<tr><td colspan="5">Erro: ${error.message}</td></tr>`; 
         }
     }
 
-    function renderTable(vendasParaRenderizar) {
-        tableBody.innerHTML = '';
-        if (vendasParaRenderizar.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
-            return;
-        }
-        vendasParaRenderizar.forEach(venda => {
-            tableBody.innerHTML += `
-                <tr id="venda-row-${venda.id}">
-                    <td>${venda.cliente_nome || 'N/A'}</td>
-                    <td>${venda.codigo_venda || 'N/A'}</td>
-                    <td>${venda.status || 'Pendente'}</td>
-                    <td class="status-cell status-checking" id="status-nfe-${venda.id}">...</td>
-                    <td id="num-nfe-${venda.id}">...</td>
-                </tr>
-            `;
-        });
+    function renderTable(vendas) {
+        tableBody.innerHTML = vendas.map(v => `
+            <tr id="venda-row-${v.id}">
+                <td>${v.cliente_nome || 'N/A'}</td>
+                <td>${v.codigo_venda || 'N/A'}</td>
+                <td>${v.status || 'Pendente'}</td>
+                <td class="status-cell status-checking" id="status-nfe-${v.id}">...</td>
+                <td id="num-nfe-${v.id}">...</td>
+            </tr>
+        `).join('');
     }
 
-    /**
-     * =================================================================
-     * FUNÇÃO COM LÓGICA DE 90 DIAS MANTIDA
-     * =================================================================
-     */
     async function verificarNotas(listaDeVendas, dataBuscaHoje) {
-        
-        // --- INÍCIO DA MUDANÇA (MANTIDA) ---
-        // 1. Definir a data final (hoje)
-        const dataFim = dataBuscaHoje; 
-        
-        // 2. Definir a data inicial (90 dias atrás)
-        // Usamos T12:00 para garantir que o new Date() não pule o dia
         const hoje = new Date(dataBuscaHoje + 'T12:00:00'); 
         const dataInicio = new Date(hoje);
-        dataInicio.setDate(hoje.getDate() - 90); // 90 dias no passado
-        
-        // 3. Re-formatar a data inicial para "YYYY-MM-DD"
-        // A função getYYYYMMDD() já existe no topo do script
+        dataInicio.setDate(hoje.getDate() - 90); 
+
         const dataInicioStr = getYYYYMMDD(dataInicio);
-        // --- FIM DA MUDANÇA ---
+        const dataFim = dataBuscaHoje;
 
         const promessas = listaDeVendas.map(venda => {
-            return supabase.functions.invoke('get-nota-details', {
+            return supabaseClient.functions.invoke('get-nota-details', {
                 body: {
                     codigoVenda: venda.codigo_venda,
-                    de: dataInicioStr, // <-- MANTIDO
-                    ate: dataFim        // <-- MANTIDO
+                    de: dataInicioStr,
+                    ate: dataFim
                 }
             })
-            .then(({ data: nfeData, error: funcError }) => {
-                if (funcError || nfeData.error) {
+            .then(({ data: nfeData, error }) => {
+                if (error || !nfeData || nfeData.error) {
                     venda.nfe_status = 'Não Encontrada'; 
                 } else {
                     venda.nfe_status = 'Emitida';
@@ -332,19 +263,15 @@
         await Promise.allSettled(promessas);
     }
 
-    function repopularNFeData(listaDeVendas) {
-        listaDeVendas.forEach(venda => {
-            const statusCell = document.getElementById(`status-nfe-${venda.id}`);
-            if (!statusCell) return; 
+    function repopularNFeData(vendas) {
+        vendas.forEach(v => {
+            const statusCell = document.getElementById(`status-nfe-${v.id}`);
+            const numCell = document.getElementById(`num-nfe-${v.id}`);
+            if (!statusCell || !v.nfe_status) return; 
 
-            if (venda.nfe_status === 'Emitida') {
-                statusCell.innerText = 'Emitida';
-                statusCell.className = 'status-cell status-ok';
-                document.getElementById(`num-nfe-${venda.id}`).innerText = venda.nfe_numero || 'N/D';
-            } else if (venda.nfe_status === 'Não Encontrada') {
-                statusCell.innerText = 'Não Encontrada';
-                statusCell.className = 'status-cell status-error';
-            }
+            statusCell.innerText = v.nfe_status;
+            statusCell.className = `status-cell ${v.nfe_status === 'Emitida' ? 'status-ok' : 'status-error'}`;
+            numCell.innerText = v.nfe_numero || 'N/D';
         });
     }
 
@@ -352,9 +279,7 @@
         statusMessage.textContent = message;
         statusMessage.style.display = 'block';
         statusMessage.style.backgroundColor = type === 'error' ? '#f8d7da' : '#fff3cd';
-        statusMessage.style.color = type === 'error' ? '#721c24' : '#856404';
     }
-
 </script>
 </body>
 </html>

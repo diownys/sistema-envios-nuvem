@@ -22,56 +22,31 @@
  .janela-button:hover { background-color: #0056b3; }
  .janela-button:disabled { background-color: #ccc; }
  #status { margin-top: 1rem; color: #555; }
+ .back-link { margin-top: 1.5rem; display: block; color: #666; text-decoration: none; font-size: 0.9rem; }
 
- /* --- NOVOS ESTILOS PARA O PAINEL DE ADMIN --- */
+ /* Painel de Admin */
  .admin-container {
- background: #fff8e1; /* Um amarelo claro para destacar */
+ background: #fff8e1;
  border: 1px solid #ffecb3;
  padding: 1.5rem 2rem;
  border-radius: 8px;
  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
  width: 100%;
- max-width: 700px; /* Mais largo para caber mais info */
+ max-width: 700px;
  margin-top: 2rem;
  box-sizing: border-box;
  }
- .admin-container h3 {
- margin-top: 0;
- color: #c07d00;
- border-bottom: 2px solid #ffecb3;
- padding-bottom: 0.5rem;
- }
- .admin-list {
- list-style-type: none;
- padding: 0;
- margin: 0;
- max-height: 400px;
- overflow-y: auto;
- }
+ .admin-container h3 { margin-top: 0; color: #c07d00; border-bottom: 2px solid #ffecb3; padding-bottom: 0.5rem; }
+ .admin-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; }
  .admin-item {
- display: flex;
- justify-content: space-between;
- align-items: center;
- padding: 0.75rem 0.5rem;
- border-bottom: 1px solid #eee;
- font-size: 0.9rem;
- flex-wrap: wrap; /* Para telas menores */
+ display: flex; justify-content: space-between; align-items: center;
+ padding: 0.75rem 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; flex-wrap: wrap;
  }
- .admin-item span { margin-right: 1rem; }
  .revert-button {
- background-color: #e53935; /* Vermelho */
- color: white;
- border: none;
- border-radius: 4px;
- padding: 0.4rem 0.8rem;
- font-size: 0.85rem;
- cursor: pointer;
- transition: background-color 0.2s;
- white-space: nowrap; /* Não quebra o texto do botão */
+ background-color: #e53935; color: white; border: none; border-radius: 4px;
+ padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;
  }
  .revert-button:hover { background-color: #c62828; }
- .revert-button:disabled { background-color: #ccc; }
- /* --- FIM DOS NOVOS ESTILOS --- */
 </style>
 </head>
 <body>
@@ -81,203 +56,159 @@
  <div id="lista-janelas">
  <p id="status">Carregando janelas para conferência...</p>
  </div>
+ <a href="index.html" class="back-link">← Voltar ao Dashboard</a>
 </div>
 
 <div id="admin-panel-placeholder"></div>
 
 <script>
- // ✅ 2. Inicialização via window.supabase (sem type="module")
  const { createClient } = window.supabase;
 
  const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
- const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+ // Uso padronizado de supabaseClient
+ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
  const divLista = document.getElementById('lista-janelas');
  const pStatus = document.getElementById('status');
  const h2Data = document.getElementById('data-hoje');
  const adminPanelPlaceholder = document.getElementById('admin-panel-placeholder');
 
- // --- Função principal para carregar as janelas ---
  async function carregarJanelas() {
- const hoje = new Date();
- hoje.setHours(0, 0, 0, 0); 
- const amanha = new Date(hoje);
- amanha.setDate(amanha.getDate() + 1);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0); 
+  const amanha = new Date(hoje);
+  amanha.setDate(amanha.getDate() + 1);
 
- h2Data.innerText = `Envios de: ${hoje.toLocaleDateString('pt-BR')}`;
- const hojeISO = hoje.toISOString();
- const amanhaISO = amanha.toISOString();
+  h2Data.innerText = `Envios de: ${hoje.toLocaleDateString('pt-BR')}`;
+  
+  const hojeISO = hoje.toISOString();
+  const amanhaISO = amanha.toISOString();
 
- const { data, error } = await supabase
-  .from('envios')
-  .select('janela_coleta')
-  .eq('status', 'Confirmado')
-  .gte('created_at', hojeISO)
-  .lt('created_at', amanhaISO);
+  const { data, error } = await supabaseClient
+   .from('envios')
+   .select('janela_coleta')
+   .eq('status', 'Confirmado')
+   .gte('created_at', hojeISO)
+   .lt('created_at', amanhaISO);
 
- if (error) {
-  pStatus.innerText = `Erro ao buscar janelas: ${error.message}`;
-  return;
- }
-
- const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela Definida'))];
- 
- if (janelasUnicas.length === 0) {
-  pStatus.innerText = "Nenhum envio 'Confirmado' encontrado para hoje.";
- } else {
-  pStatus.remove(); 
-  divLista.innerHTML = ''; 
-  janelasUnicas.sort().forEach(nomeJanela => { 
-   const button = document.createElement('button');
-   button.className = 'janela-button';
-   button.innerText = nomeJanela; 
-   button.onclick = () => selecionarJanela(button, nomeJanela);
-   divLista.appendChild(button);
-  });
- }
- 
- // --- INÍCIO DA LÓGICA DE ADMIN ---
- // Após carregar as janelas, verifica se o usuário é admin
- // e carrega o painel de correção.
- verificarAdminEExibirPainel(hojeISO, amanhaISO);
- // --- FIM DA LÓGICA DE ADMIN ---
- }
-
- // --- Função para criar o lote ---
- async function selecionarJanela(button, nomeJanela) {
- button.disabled = true;
- button.innerText = 'Processando...';
-
- const { data: lote_id, error } = await supabase.rpc('criar_lote_pela_janela', {
-  p_janela_nome: nomeJanela
- });
-
- if (error) {
-  console.error('Erro ao chamar RPC criar_lote_pela_janela:', error);
-  button.innerText = `Erro ao criar lote.`;
-  button.disabled = false;
-  return;
- }
- 
- window.location.href = `/conferencia.html?lote_id=${lote_id}`;
- }
-
- // --- NOVAS FUNÇÕES DE ADMIN ---
-
- /**
- * 1. Verifica se o usuário está logado e se sua role é 'admin'
- */
- async function verificarAdminEExibirPainel(hojeISO, amanhaISO) {
- const { data: { user } } = await supabase.auth.getUser();
- if (!user) {
-  console.log("Usuário não logado. Painel de admin oculto.");
-  return;
- }
-
- const { data: profile, error } = await supabase
-  .from('profiles')
-  .select('role')
-  .eq('id', user.id)
-  .single();
-
- if (error || !profile) {
-  console.error("Erro ao buscar perfil do usuário:", error?.message);
-  return;
- }
-
- // Se for admin, desenha o painel
- if (profile.role === 'admin') {
-  console.log("Usuário é admin. Carregando painel de correção...");
-  carregarEnviosParaCorrecao(hojeISO, amanhaISO);
- } else {
-  console.log("Usuário não é admin. Painel de admin oculto.");
- }
- }
-
- /**
- * 2. Busca todos os envios 'Confirmados' de hoje e os exibe no painel
- */
- async function carregarEnviosParaCorrecao(hojeISO, amanhaISO) {
- // Busca envios com mais detalhes
- const { data: envios, error } = await supabase
-  .from('envios')
-  .select('id, codigo_venda, cliente_nome, janela_coleta, volumes, marca')
-  .eq('status', 'Confirmado')
-  .gte('created_at', hojeISO)
-  .lt('created_at', amanhaISO)
-  .order('janela_coleta', { ascending: true });
-
- if (error) {
-  adminPanelPlaceholder.innerHTML = `<p>Erro ao carregar envios para correção.</p>`;
-  return;
- }
-
- // Desenha a estrutura do painel
- let adminHTML = `
-  <div class="admin-container">
-  <h3>Painel de Admin: Correção de Envios</h3>
-  <ul class="admin-list">
- `;
-
- if (envios.length === 0) {
-  adminHTML += `<li class="admin-item">Nenhum envio confirmado para corrigir.</li>`;
- } else {
-  envios.forEach(envio => {
-  adminHTML += `
-   <li class="admin-item" id="admin-envio-${envio.id}">
-    <div>
-      <span><b>Janela:</b> ${envio.janela_coleta || 'N/D'}</span>
-      <span><b>Venda:</b> ${envio.codigo_venda}</span>
-      <span><b>Vols:</b> ${envio.volumes}</span>
-    </div>
-    <button class="revert-button" data-envio-id="${envio.id}">
-      Reverter para Pendente
-    </button>
-   </li>
-  `;
-  });
- }
-
- adminHTML += `</ul></div>`;
- adminPanelPlaceholder.innerHTML = adminHTML;
-
- // Adiciona os 'event listeners' para os novos botões
- document.querySelectorAll('.revert-button').forEach(button => {
-  button.addEventListener('click', () => {
-  const envioId = button.getAttribute('data-envio-id');
-  if (confirm(`Tem certeza que deseja reverter o envio ${envioId} para 'Pendente'?`)) {
-   reverterEnvio(envioId, button);
+  if (error) {
+   pStatus.innerText = `Erro ao buscar janelas: ${error.message}`;
+   return;
   }
+
+  const janelasUnicas = [...new Set(data.map(item => item.janela_coleta || 'Sem Janela Definida'))];
+  
+  if (janelasUnicas.length === 0) {
+   pStatus.innerText = "Nenhum envio 'Confirmado' encontrado para hoje.";
+  } else {
+   pStatus.remove(); 
+   divLista.innerHTML = ''; 
+   janelasUnicas.sort().forEach(nomeJanela => { 
+    const button = document.createElement('button');
+    button.className = 'janela-button';
+    button.innerText = nomeJanela; 
+    button.onclick = () => selecionarJanela(button, nomeJanela);
+    divLista.appendChild(button);
+   });
+  }
+  
+  verificarAdminEExibirPainel(hojeISO, amanhaISO);
+ }
+
+ async function selecionarJanela(button, nomeJanela) {
+  button.disabled = true;
+  button.innerText = 'Processando...';
+
+  // RPC que agrupa os envios da janela em um novo ID de Lote
+  const { data: lote_id, error } = await supabaseClient.rpc('criar_lote_pela_janela', {
+   p_janela_nome: nomeJanela
   });
- });
+
+  if (error) {
+   console.error('Erro ao criar lote:', error);
+   alert('Erro ao criar lote: ' + error.message);
+   button.innerText = nomeJanela;
+   button.disabled = false;
+   return;
+  }
+  
+  // Redireciona para a página de conferência com o ID do lote gerado
+  window.location.href = `conferencia.html?lote_id=${lote_id}`;
  }
 
- /**
- * 3. Ação de reverter o status (chama sua Edge Function 'reverter-envio')
- */
+ // --- LÓGICA DE ADMIN (CORREÇÃO) ---
+
+ async function verificarAdminEExibirPainel(hojeISO, amanhaISO) {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await supabaseClient
+   .from('profiles')
+   .select('role')
+   .eq('id', user.id)
+   .single();
+
+  if (profile?.role === 'admin') {
+   carregarEnviosParaCorrecao(hojeISO, amanhaISO);
+  }
+ }
+
+ async function carregarEnviosParaCorrecao(hojeISO, amanhaISO) {
+  const { data: envios, error } = await supabaseClient
+   .from('envios')
+   .select('id, codigo_venda, cliente_nome, janela_coleta, volumes')
+   .eq('status', 'Confirmado')
+   .gte('created_at', hojeISO)
+   .lt('created_at', amanhaISO)
+   .order('janela_coleta', { ascending: true });
+
+  if (error || envios.length === 0) return;
+
+  let adminHTML = `
+   <div class="admin-container">
+   <h3>Painel de Correção (Admin)</h3>
+   <ul class="admin-list">
+  `;
+
+  envios.forEach(envio => {
+   adminHTML += `
+    <li class="admin-item">
+     <div>
+      <b>${envio.janela_coleta || 'N/D'}:</b> ${envio.codigo_venda} (${envio.volumes} vol)
+     </div>
+     <button class="revert-button" onclick="reverterEnvio('${envio.id}', this)">
+       Reverter
+     </button>
+    </li>
+   `;
+  });
+
+  adminHTML += `</ul></div>`;
+  adminPanelPlaceholder.innerHTML = adminHTML;
+ }
+
  async function reverterEnvio(envioId, button) {
- button.disabled = true;
- button.innerText = 'Revertendo...';
+  if (!confirm('Reverter este envio para "Pendente"?')) return;
 
- // Vamos chamar a sua Edge Function 'reverter-envio'
- const { error } = await supabase.functions.invoke('reverter-envio', {
-  body: { envio_id: parseInt(envioId) } 
- });
+  button.disabled = true;
+  button.innerText = '...';
 
- if (error) {
-  console.error('Erro ao chamar a function reverter-envio:', error);
- alert(`Erro ao reverter: ${error.message}`);
-  button.innerText = 'Erro! Tente Novamente';
-  button.disabled = false;
- } else {
-  // Sucesso!
-  alert('Envio revertido para "Pendente" com sucesso!');
-  window.location.reload();
+  const { error } = await supabaseClient.functions.invoke('reverter-envio', {
+   body: { envio_id: parseInt(envioId) } 
+  });
+
+  if (error) {
+   alert(`Erro: ${error.message}`);
+   button.disabled = false;
+   button.innerText = 'Reverter';
+  } else {
+   alert('Envio revertido!');
+   window.location.reload();
+  }
  }
- }
 
- // Inicia o processo
  carregarJanelas();
 </script>
 </body>

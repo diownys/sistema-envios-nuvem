@@ -6,7 +6,6 @@
     <title>Vendas da Janela</title>
     
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
     <style>
@@ -26,7 +25,6 @@
         .btn-confirm { background-color: #007bff; }
         .btn-scan { background-color: #17a2b8; }
         .btn-confirmed { background-color: #28a745; cursor: not-allowed; }
-        /* Estilos do Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px; }
         .modal-content h2 { margin-top: 0; }
@@ -37,7 +35,7 @@
 </head>
 <body>
     <div class="header">
-        <a href="/index.html">&larr; Voltar para o Menu</a>
+        <a href="index.html">&larr; Voltar para o Menu</a>
         <h1 id="titulo-janela">Carregando...</h1>
     </div>
 
@@ -80,23 +78,20 @@
     </div>
 
 <script>
-    // ✅ 2. Inicialização via window.supabase (sem type="module")
     const { createClient } = window.supabase;
     
-    // Chaves Supabase mantidas
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let todasAsVendas = []; 
     let janelaColeta = '';
     
     document.addEventListener('DOMContentLoaded', async () => {
-        // Lógica de Autenticação (mantida)
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { 
-            window.location.href = '/login.html'; 
+            window.location.href = 'login.html'; 
             return; 
         }
 
@@ -105,32 +100,27 @@
         const dataString = params.get('data'); 
         
         if (!janelaColeta || !dataString) { 
-            document.getElementById('titulo-janela').textContent = "Erro: Parâmetros (Janela ou Data) não especificados."; 
+            document.getElementById('titulo-janela').textContent = "Erro: Parâmetros não especificados."; 
             return; 
         }
         
-        // Cálculo das datas de início e fim do dia
         const [year, month, day] = dataString.split('-').map(Number);
         const selectedDate = new Date(year, month - 1, day);
         const startOfDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
         const endOfDay = new Date(startOfDay);
         endOfDay.setDate(endOfDay.getDate() + 1);
 
-        // Atualiza o título para incluir a data
         document.getElementById('titulo-janela').textContent = `Vendas de ${selectedDate.toLocaleDateString('pt-BR')} - Janela: ${janelaColeta}`;
         
         setupEventListeners();
-        
-        // Chama a função com os três parâmetros
         await carregarVendas(janelaColeta, startOfDay.toISOString(), endOfDay.toISOString());
     });
 
     function renderTable(vendasParaRenderizar) {
         const tableBody = document.getElementById('vendas-table-body');
         tableBody.innerHTML = '';
-        // Colspan atualizado para 6, para incluir a nova coluna UF
         if (vendasParaRenderizar.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6">Nenhuma venda encontrada para o filtro atual.</td></tr>'; 
+            tableBody.innerHTML = '<tr><td colspan="6">Nenhuma venda encontrada.</td></tr>'; 
             return;
         }
         vendasParaRenderizar.forEach(venda => {
@@ -153,25 +143,17 @@
         });
     }
 
-    // Função de carregamento AGORA aceita os parâmetros de data
     async function carregarVendas(janela, startDate, endDate) {
         const tableBody = document.getElementById('vendas-table-body');
-        // Colspan atualizado para 6
         tableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; 
         try {
-            // Chamada à Edge Function com os 3 parâmetros
-            const { data, error } = await supabase.functions.invoke('get-vendas-por-janela', { 
-                body: { 
-                    janela: janela,
-                    start_date: startDate, 
-                    end_date: endDate 
-                } 
+            const { data, error } = await supabaseClient.functions.invoke('get-vendas-por-janela', { 
+                body: { janela, start_date: startDate, end_date: endDate } 
             });
             if (error) throw error;
-            todasAsVendas = data.vendas;
+            todasAsVendas = data.vendas || [];
             renderTable(todasAsVendas);
         } catch (error) {
-            // Colspan atualizado para 6
             tableBody.innerHTML = `<tr><td colspan="6">Erro ao carregar vendas: ${error.message}</td></tr>`; 
         }
     }
@@ -188,18 +170,17 @@
         
         searchInput.addEventListener('input', () => {
             const query = searchInput.value.toLowerCase();
-            const vendasFiltradas = todasAsVendas.filter(venda => 
-                (venda.cliente_nome?.toLowerCase().includes(query)) ||
-                (venda.codigo_venda?.toLowerCase().includes(query)) ||
-                (venda.ordem_manipulacao?.toLowerCase().includes(query))
+            const filtradas = todasAsVendas.filter(v => 
+                (v.cliente_nome?.toLowerCase().includes(query)) ||
+                (v.codigo_venda?.toLowerCase().includes(query)) ||
+                (v.ordem_manipulacao?.toLowerCase().includes(query))
             );
-            renderTable(vendasFiltradas);
+            renderTable(filtradas);
         });
 
         tableBody.addEventListener('click', (event) => {
-            const target = event.target;
-            if (target.matches('.btn-confirm')) {
-                const vendaId = target.dataset.vendaId;
+            if (event.target.matches('.btn-confirm')) {
+                const vendaId = event.target.dataset.vendaId;
                 const venda = todasAsVendas.find(v => v.id == vendaId);
                 if (venda) {
                     document.getElementById('modal-cliente-nome').textContent = venda.cliente_nome;
@@ -217,7 +198,7 @@
             const saveButton = document.getElementById('save-button');
             saveButton.textContent = 'Processando...';
             try {
-                const { data: htmlString, error } = await supabase.functions.invoke('confirmar-envio', { 
+                const { data: htmlString, error } = await supabaseClient.functions.invoke('confirmar-envio', { 
                     body: { envio_id: parseInt(vendaId), volumes: parseInt(volumes) },
                     responseType: 'text'
                 });
@@ -227,10 +208,8 @@
                 printWindow.document.close();
                 printWindow.print();
                 
-                // Remove a venda da lista local e renderiza novamente
                 todasAsVendas = todasAsVendas.filter(v => v.id != vendaId);
                 renderTable(todasAsVendas);
-                
                 modal.style.display = 'none';
             } catch(error) {
                 alert(`Erro ao confirmar: ${error.message}`);
@@ -243,33 +222,41 @@
             modal.style.display = 'none';
         });
 
+        // --- Funções do Scanner Refatoradas ---
         const qrCodeSuccessCallback = (decodedText) => {
             searchInput.value = decodedText;
             searchInput.dispatchEvent(new Event('input'));
             stopScanner();
         };
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        function resetScannerUI() {
+            qrReaderDiv.style.display = 'none';
+            scanButton.textContent = 'Escanear';
+            isScannerRunning = false;
+        }
 
         function startScanner() {
             qrReaderDiv.style.display = 'block';
             scanButton.textContent = 'Fechar Câmera';
             isScannerRunning = true;
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-                .catch(err => alert("Erro ao iniciar a câmera. Verifique as permissões."));
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                qrCodeSuccessCallback
+            ).catch(err => {
+                alert("Erro ao iniciar a câmera. Verifique as permissões.");
+                resetScannerUI();
+            });
         }
 
         function stopScanner() {
             if (isScannerRunning) {
-                html5QrCode.stop().then(() => {
-                    qrReaderDiv.style.display = 'none';
-                    scanButton.textContent = 'Escanear';
-                    isScannerRunning = false;
-                }).catch(err => {
-                    console.error("Falha ao parar o scanner, mas continuando...", err);
-                    qrReaderDiv.style.display = 'none';
-                    scanButton.textContent = 'Escanear';
-                    isScannerRunning = false;
-                });
+                html5QrCode.stop()
+                    .then(resetScannerUI)
+                    .catch(err => {
+                        console.warn("Falha ao parar scanner:", err);
+                        resetScannerUI(); // Garante que a UI feche mesmo se o hardware travar
+                    });
             }
         }
 

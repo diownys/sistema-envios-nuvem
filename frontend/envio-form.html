@@ -49,7 +49,7 @@
                 <div class="form-group"><label for="numero_nota">Número da Nota</label><input type="text" id="numero_nota" name="numero_nota"></div>
             </div>
             <div class="form-actions">
-                <a href="/index.html" id="cancel-link" class="btn btn-cancel">Cancelar</a>
+                <a href="index.html" id="cancel-link" class="btn btn-cancel">Cancelar</a>
                 <button type="submit" class="btn btn-save">Salvar</button>
             </div>
         </form>
@@ -57,13 +57,13 @@
     </div>
 
 <script>
-    // ✅ 2. Inicialização via window.supabase (sem type="module")
     const { createClient } = window.supabase;
     
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI'; 
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Variável renomeada para evitar conflitos com a global window.supabase
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const form = document.getElementById('envio-form');
     const pageTitle = document.getElementById('page-title');
@@ -73,33 +73,29 @@
     let originalJanela = '';
 
     document.addEventListener('DOMContentLoaded', async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = '/login.html'; return; }
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
 
         const params = new URLSearchParams(window.location.search);
         envioId = params.get('id');
 
         if (envioId) {
-            // MODO DE EDIÇÃO
             editMode = true;
             pageTitle.textContent = 'Editar Venda';
             await fetchAndPopulateForm(envioId);
         } else {
-            // MODO DE ADIÇÃO
             editMode = false;
             pageTitle.textContent = 'Adicionar Nova Venda';
-            document.getElementById('cancel-link').href = '/index.html';
+            document.getElementById('cancel-link').href = 'index.html';
         }
     });
 
     async function fetchAndPopulateForm(id) {
         try {
-            // A função 'get-envio-by-id' deve retornar a marca
-            const { data, error } = await supabase.functions.invoke('get-envio-by-id', { body: { id: parseInt(id) } });
+            const { data, error } = await supabaseClient.functions.invoke('get-envio-by-id', { body: { id: parseInt(id) } });
             if (error) throw error;
             const envio = data.envio;
             
-            // Este loop preenche todos os campos, incluindo o novo <select id="marca">
             for (const key in envio) {
                 const input = document.getElementById(key);
                 if (input) input.value = envio[key];
@@ -115,22 +111,24 @@
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         
-        // Esta parte captura AUTOMATICAMENTE o novo campo 'marca'
         const formData = new FormData(form);
         const dataObject = Object.fromEntries(formData.entries());
-        let redirectUrl = '/index.html';
+        let redirectUrl = 'index.html';
 
         try {
             let error;
             
             if (editMode) {
-                // Se está em modo de edição, chama a API de update. 'dataObject' inclui agora a 'marca'.
-                const { error: updateError } = await supabase.functions.invoke('update-envio', { body: { id: parseInt(envioId), updates: dataObject } });
+                const { error: updateError } = await supabaseClient.functions.invoke('update-envio', { 
+                    body: { id: parseInt(envioId), updates: dataObject } 
+                });
                 error = updateError;
+                // Redireciona de volta para a lista da janela específica após editar
                 redirectUrl = `vendas.html?janela=${encodeURIComponent(dataObject.janela_coleta || originalJanela)}`;
             } else {
-                // Se está em modo de adição, chama a API de create. 'dataObject' inclui agora a 'marca'.
-                const { error: createError } = await supabase.functions.invoke('create-envio', { body: dataObject });
+                const { error: createError } = await supabaseClient.functions.invoke('create-envio', { 
+                    body: dataObject 
+                });
                 error = createError;
             }
 

@@ -26,7 +26,7 @@
 </head>
 <body>
   <div class="header">
-    <a href="/index.html">&larr; Voltar ao Menu</a>
+    <a href="index.html">&larr; Voltar ao Menu</a>
     <h1>Vendas Concluídas</h1>
   </div>
 
@@ -50,13 +50,13 @@
   </div>
 
 <script>
-    // ✅ 2. Inicialização via window.supabase (sem type="module")
     const { createClient } = window.supabase;
     
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Alterado para supabaseClient para evitar conflitos
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     let concluidosData = [];
     const tableBody = document.getElementById('concluidos-table-body');
@@ -64,20 +64,16 @@
     const startDateInput = document.getElementById('start-date-input');
     const endDateInput = document.getElementById('end-date-input');
 
-    // Função com a correção de fuso horário
     function aplicarFiltros() {
         const query = searchInput.value.toLowerCase();
-        
-        // Pega as datas dos inputs como strings 'YYYY-MM-DD'
         const startDateString = startDateInput.value;
         const endDateString = endDateInput.value;
         
         if (!startDateString || !endDateString) {
-            renderTable([]); // Se não houver data, limpa a tabela
+            renderTable([]); 
             return;
         }
 
-        // CORREÇÃO: Constrói as datas de forma segura, usando o fuso horário local
         const [startYear, startMonth, startDay] = startDateString.split('-').map(Number);
         const startDate = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
 
@@ -98,8 +94,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = '/login.html'; return; }
+        // Verifica sessão usando supabaseClient
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) { window.location.href = 'login.html'; return; }
         
         const hoje = new Date().toISOString().split('T')[0];
         startDateInput.value = hoje;
@@ -137,10 +134,9 @@
     async function carregarConcluidos() {
         tableBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
         try {
-            // Chamando a Edge Function do Supabase
-            const { data, error } = await supabase.functions.invoke('get-concluidos');
+            const { data, error } = await supabaseClient.functions.invoke('get-concluidos');
             if (error) throw error;
-            concluidosData = data.concluidos;
+            concluidosData = data.concluidos || [];
             aplicarFiltros();
         } catch (error) {
             tableBody.innerHTML = `<tr><td colspan="5">Erro ao carregar vendas: ${error.message}</td></tr>`;
@@ -150,14 +146,20 @@
     tableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const vendaId = target.dataset.vendaId;
+        if (!vendaId) return;
 
         if (target.matches('.btn-revert')) {
             if (confirm('Tem certeza que deseja reverter esta venda para "Pendente"?')) {
+                const originalText = target.textContent;
                 target.textContent = 'Revertendo...';
-                const { error } = await supabase.functions.invoke('reverter-envio', { body: { envio_id: parseInt(vendaId) } });
+                target.disabled = true;
+
+                const { error } = await supabaseClient.functions.invoke('reverter-envio', { body: { envio_id: parseInt(vendaId) } });
+                
                 if (error) {
                     alert(`Erro ao reverter: ${error.message}`);
-                    target.textContent = 'Reverter';
+                    target.textContent = originalText;
+                    target.disabled = false;
                 } else {
                     concluidosData = concluidosData.filter(v => v.id != vendaId);
                     aplicarFiltros(); 
@@ -166,9 +168,12 @@
         }
 
         if (target.matches('.btn-reprint')) {
+            const originalText = target.textContent;
             target.textContent = 'Gerando...';
+            target.disabled = true;
+
             try {
-                const { data: htmlString, error } = await supabase.functions.invoke('gerar-etiqueta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
+                const { data: htmlString, error } = await supabaseClient.functions.invoke('gerar-etiqueta', { body: { envio_id: parseInt(vendaId) }, responseType: 'text' });
                 if (error) throw error;
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write(htmlString);
@@ -177,7 +182,8 @@
             } catch (error) {
                 alert(`Erro ao reimprimir: ${error.message}`);
             } finally {
-                target.textContent = 'Reimprimir';
+                target.textContent = originalText;
+                target.disabled = false;
             }
         }
     });
