@@ -16,12 +16,15 @@
     button:disabled { background:#ccc; cursor:not-allowed; }
     button:hover:not(:disabled) { background:#0056b3; }
     a { display:block; margin-top:1rem; color:#6c757d; text-decoration:none; font-size: 0.9rem; }
-    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; font-size: 0.85rem; border: 1px solid #eee; }
+    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; font-size: 0.85rem; border: 1px solid #eee; transition: all 0.3s ease; }
+    
+    /* Classes de feedback */
     .success { color:#155724; background:#d4edda !important; border-color: #c3e6cb !important; }
     .error   { color:#721c24; background:#f8d7da !important; border-color: #f5c6cb !important; }
   </style>
 </head>
 <body>
+
   <div class="container">
     <h1>Importar Planilha</h1>
     <div class="row">
@@ -37,18 +40,20 @@
   </div>
 
   <script>
+    // 1. Inicialização correta para evitar conflitos de variáveis globais
     const { createClient } = window.supabase;
 
-    // Configurações mantidas
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Nomeado como supabaseClient para evitar o erro "Identifier 'supabase' has already been declared"
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const btn = document.getElementById('btnEnviar');
     const fileInput = document.getElementById('file');
     const logDiv = document.getElementById('log');
 
+    // Função auxiliar para exibir mensagens no log
     const log = (msg, type='') => { 
         logDiv.textContent = msg; 
         logDiv.className = type; 
@@ -57,13 +62,14 @@
     btn.addEventListener('click', async () => {
       const file = fileInput.files?.[0];
       
+      // Validação inicial do arquivo
       if (!file) {
           return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error');
       }
 
       try {
-        // 1. Verifica sessão
-        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        // 2. Verificação de autenticação
+        const { data: { session }, error: sessionErr } = await supabaseClient.auth.getSession();
         
         if (sessionErr || !session) {
           log('Sessão expirada. Redirecionando para o login...', 'error');
@@ -71,33 +77,40 @@
           return;
         }
 
+        // Estado de carregamento
         btn.disabled = true;
-        log('Processando arquivo... Isso pode levar alguns segundos.');
+        log('Enviando e processando arquivo... Aguarde.', '');
 
-        // 2. Preparar FormData
+        // 3. Preparação dos dados
         const formData = new FormData();
         formData.append('file', file);
 
-        // 3. Invocar a função via SDK (mais robusto que fetch manual)
-        const { data, error } = await supabase.functions.invoke('import-excel', {
+        // 4. Chamada da Edge Function via SDK
+        const { data, error } = await supabaseClient.functions.invoke('import-excel', {
             body: formData,
         });
 
+        // Tratamento de erro retornado pela função
         if (error) throw error;
 
-        // 4. Sucesso
+        // 5. Sucesso na operação
         log(data?.message || 'Importação concluída com sucesso!', 'success');
-        fileInput.value = '';
+        fileInput.value = ''; // Limpa o campo de arquivo
 
       } catch (err) {
-        console.error('Erro na importação:', err);
-        // Tenta extrair mensagem amigável do erro
-        const errorMsg = err.message || 'Erro desconhecido ao processar planilha.';
+        console.error('Erro detalhado na importação:', err);
+        
+        // Tenta capturar a mensagem de erro da resposta ou usa uma mensagem padrão
+        let errorMsg = 'Erro desconhecido ao processar planilha.';
+        if (err.message) errorMsg = err.message;
+        
         log('Erro: ' + errorMsg, 'error');
       } finally {
+        // Restaura o botão independente de sucesso ou falha
         btn.disabled = false;
       }
     });
   </script>
+
 </body>
 </html>
