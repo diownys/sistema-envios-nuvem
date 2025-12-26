@@ -1,78 +1,116 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema de Envios</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Importar Envios</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <style>
+    body { font-family: sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; background:#f4f4f9; margin:0; }
+    .container { background:#fff; padding:2rem 3rem; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,.1); text-align:center; width:90%; max-width:500px; }
+    h1 { color:#333; margin-bottom:1.5rem; }
+    input[type="file"] { border:1px solid #ddd; padding:.8rem; border-radius:5px; width:100%; box-sizing:border-box; }
+    button { background:#007bff; color:#fff; border:none; padding:.8rem 1.5rem; border-radius:5px; cursor:pointer; font-size:1rem; margin-top:1.5rem; width:100%; transition:background-color .2s; }
+    button:disabled { background:#ccc; cursor:not-allowed; }
+    button:hover:not(:disabled) { background:#0056b3; }
+    a { display:block; margin-top:1rem; color:#6c757d; text-decoration:none; font-size: 0.9rem; }
+    #log { margin-top:1.5rem; white-space:pre-wrap; background:#f7f7f7; padding:12px; border-radius:6px; min-height:1.5em; text-align:left; font-size: 0.85rem; border: 1px solid #eee; transition: all 0.3s ease; }
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script> 
-    
-    <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: white; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 400px; }
-        h1 { color: #333; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1rem; text-align: left; }
-        label { display: block; margin-bottom: 0.5rem; color: #555; }
-        input { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 0.9rem; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-        button:hover { background-color: #0056b3; }
-        .error-message { color: #dc3545; margin-top: 1rem; min-height: 1.2em; }
-    </style>
+    /* Classes de feedback */
+    .success { color:#155724; background:#d4edda !important; border-color: #c3e6cb !important; }
+    .error   { color:#721c24; background:#f8d7da !important; border-color: #f5c6cb !important; }
+  </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>Acessar Sistema</h1>
-        <form id="login-form">
-            <div class="input-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" required>
-            </div>
-            <div class="input-group">
-                <label for="password">Senha</label>
-                <input type="password" id="password" required>
-            </div>
-            <button type="submit">Entrar</button>
-        </form>
-        <div id="error-message" class="error-message"></div>
+
+  <div class="container">
+    <h1>Importar Planilha</h1>
+    <div class="row">
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" />
     </div>
+    <div class="row">
+      <button id="btnEnviar">Enviar Arquivo</button>
+    </div>
+    <div class="row">
+      <div id="log">Selecione um arquivo .xlsx ou .csv para importar.</div>
+    </div>
+    <a href="index.html">← Voltar ao Dashboard</a>
+  </div>
 
-    <script>
-        // O Supabase agora está disponível em window.supabase (a correção do TypeError)
-        const { createClient } = window.supabase;
+  <script>
+    // 1. Inicialização correta para evitar conflitos de variáveis globais
+    const { createClient } = window.supabase;
 
-        // ⚠️ SUAS CHAVES DE PROJETO
-        const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
+    
+    // Nomeado como supabaseClient para evitar o erro "Identifier 'supabase' has already been declared"
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Inicializa o cliente Supabase
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const btn = document.getElementById('btnEnviar');
+    const fileInput = document.getElementById('file');
+    const logDiv = document.getElementById('log');
 
-        const loginForm = document.getElementById('login-form');
-        const errorMessageDiv = document.getElementById('error-message');
+    // Função auxiliar para exibir mensagens no log
+    const log = (msg, type='') => { 
+        logDiv.textContent = msg; 
+        logDiv.className = type; 
+    };
 
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Impede o recarregamento
+    btn.addEventListener('click', async () => {
+      const file = fileInput.files?.[0];
+      
+      // Validação inicial do arquivo
+      if (!file) {
+          return log('Por favor, selecione um arquivo .xlsx ou .csv.', 'error');
+      }
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+      try {
+        // 2. Verificação de autenticação
+        const { data: { session }, error: sessionErr } = await supabaseClient.auth.getSession();
+        
+        if (sessionErr || !session) {
+          log('Sessão expirada. Redirecionando para o login...', 'error');
+          setTimeout(() => location.href = 'login.html', 1500);
+          return;
+        }
 
-            errorMessageDiv.textContent = ''; // Limpa erros antigos
+        // Estado de carregamento
+        btn.disabled = true;
+        log('Enviando e processando arquivo... Aguarde.', '');
 
-            // LÓGICA DE LOGIN
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+        // 3. Preparação dos dados
+        const formData = new FormData();
+        formData.append('file', file);
 
-            if (error) {
-                // Exibe a mensagem de erro (pode ser problema de CORS ou credenciais)
-                errorMessageDiv.textContent = 'Falha no login. Verifique as credenciais ou a configuração do domínio (CORS).';
-                console.error('Erro detalhado no login:', error.message);
-            } else {
-                // Se o login for bem-sucedido, redireciona
-                window.location.href = '/index.html';
-            }
+        // 4. Chamada da Edge Function via SDK
+        const { data, error } = await supabaseClient.functions.invoke('import-excel', {
+            body: formData,
         });
-    </script>
+
+        // Tratamento de erro retornado pela função
+        if (error) throw error;
+
+        // 5. Sucesso na operação
+        log(data?.message || 'Importação concluída com sucesso!', 'success');
+        fileInput.value = ''; // Limpa o campo de arquivo
+
+      } catch (err) {
+        console.error('Erro detalhado na importação:', err);
+        
+        // Tenta capturar a mensagem de erro da resposta ou usa uma mensagem padrão
+        let errorMsg = 'Erro desconhecido ao processar planilha.';
+        if (err.message) errorMsg = err.message;
+        
+        log('Erro: ' + errorMsg, 'error');
+      } finally {
+        // Restaura o botão independente de sucesso ou falha
+        btn.disabled = false;
+      }
+    });
+  </script>
+
 </body>
 </html>
