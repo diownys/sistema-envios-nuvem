@@ -16,7 +16,6 @@
             margin-bottom: 2rem; 
             flex-wrap: wrap; 
         }
-        /* Ajuste para garantir que o título e o filtro de data fiquem lado a lado */
         .header h1 { color: #333; margin-bottom: 0; }
         .header-controls { 
             display: flex; 
@@ -27,10 +26,9 @@
         }
         #date-filter-input { padding: 0.8rem; border-radius: 5px; border: 1px solid #ccc; font-size: 1rem; }
         .header-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; }
+        .btn-import { background-color: #28a745; color: white; padding: 0.8rem 1.2rem; text-decoration: none; border-radius: 5px; font-size: 0.9rem; text-align: center; border: none; cursor: pointer; }
         
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-        /* Estilo do Card Aprimorado */
         .menu-card { 
             background: white; 
             padding: 1.5rem; 
@@ -41,7 +39,7 @@
             transition: transform 0.2s, box-shadow 0.2s; 
             display: flex; 
             flex-direction: column; 
-            justify-content: space-between; /* Melhor alinhamento vertical */
+            justify-content: space-between; 
             min-height: 120px; 
         }
         .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
@@ -51,7 +49,6 @@
         .progress-bar-inner { background-color: #28a745; height: 100%; transition: width 0.5s ease-in-out; }
         
         .no-data { background: #fff3cd; color: #856404; padding: 1rem; border-radius: 5px; text-align: center; grid-column: 1 / -1; }
-        /* Estilo do Card Especial */
         .menu-card-special { 
             background-color: #ffc107; 
             justify-content: center; 
@@ -81,7 +78,7 @@
             <a href="selecao-lote.html" class="btn-import" style="background-color: #007bff;">Gerar Romaneio</a>
             <a href="importar.html" class="btn-import">Importar Planilha</a>
             <div id="admin-button-placeholder"></div>
-            <a href="#" id="logout-button" class="btn-import" style="background-color: #dc3545;">Sair</a>
+            <button id="logout-button" class="btn-import" style="background-color: #dc3545;">Sair</button>
         </div>
     </div>
 
@@ -90,10 +87,9 @@
     </div>
 
 <script>
-    // ✅ Inicialização correta via window.supabase
     const { createClient } = window.supabase;
     
-    // CHAVES SUPABASE MANTIDAS
+    // Suas chaves mantidas conforme solicitado
     const SUPABASE_URL = 'https://nfsuisftzddegihyhoha.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mc3Vpc2Z0emRkZWdpaHlob2hhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwMTcwMDcsImV4cCI6MjA3NDU5MzAwN30.tM_9JQo6ejzOBWKQ9XxT54f8NuM6jSoHomF9c_IfEJI';
     
@@ -102,62 +98,62 @@
     const dateInput = document.getElementById('date-filter-input');
     const container = document.getElementById('envios-container'); 
 
-    // Função para definir a data padrão no input e carregar os dados
     function setDateAndFetch(date) {
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         dateInput.value = `${yyyy}-${mm}-${dd}`;
-        
         carregarMenuDeColeta(date);
     }
     
     document.addEventListener('DOMContentLoaded', async () => {
-        // Lógica de Autenticação (Verifica se o usuário está logado)
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        
+        if (sessionError || !session) {
             window.location.href = '/login.html';
             return;
         }
 
-        // Verifica se é Admin (Chama função RPC)
-        const { data: isAdmin } = await supabase.rpc('is_admin');
-        if (isAdmin) {
-            const placeholder = document.getElementById('admin-button-placeholder');
-            placeholder.innerHTML = `<a href="/admin.html" class="btn-import" style="background-color: #6f42c1;">Painel Admin</a>`;
+        try {
+            const { data: isAdmin } = await supabaseClient.rpc('is_admin');
+            if (isAdmin) {
+                const placeholder = document.getElementById('admin-button-placeholder');
+                placeholder.innerHTML = `<a href="/admin.html" class="btn-import" style="background-color: #6f42c1;">Painel Admin</a>`;
+            }
+        } catch (e) {
+            console.warn("Função RPC is_admin não encontrada ou erro de permissão.");
         }
         
-        // Lógica de Logout
         const logoutButton = document.getElementById('logout-button');
         logoutButton.addEventListener('click', async (event) => {
             event.preventDefault();
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             window.location.href = '/login.html';
         });
 
-        // Define a data padrão como "hoje" e busca os dados
+        // Define a data atual
         setDateAndFetch(new Date());
 
-        // Listener para o filtro de data
         dateInput.addEventListener('change', () => {
+            if(!dateInput.value) return;
             const [year, month, day] = dateInput.value.split('-').map(Number);
-            // Ao criar a data, use o UTC para evitar problemas de fuso horário, se necessário.
             const selectedDate = new Date(year, month - 1, day); 
             carregarMenuDeColeta(selectedDate);
         });
     });
 
-    // Função de carregamento que invoca a Edge Function do Supabase
     async function carregarMenuDeColeta(date) {
         container.innerHTML = '<div class="no-data"><p>Carregando menus de coleta...</p></div>';
 
-        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setDate(endOfDay.getDate() + 1);
+        // Garante o início e fim do dia para a consulta
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
 
         try {
-            // Chama a Edge Function do Supabase
-            const { data, error } = await supabase.functions.invoke('get-janelas-por-dia', {
+            const { data, error } = await supabaseClient.functions.invoke('get-janelas-por-dia', {
                 body: {
                     start_date: startOfDay.toISOString(),
                     end_date: endOfDay.toISOString()
@@ -167,22 +163,19 @@
             if (error) throw error;
             
             container.innerHTML = '';
-            
-            // Pega a data formatada do input para usar na URL de redirecionamento
             const dateString = dateInput.value; 
 
             if (!data || !data.janelas || data.janelas.length === 0) {
                 container.innerHTML = '<div class="no-data"><p>Nenhuma janela de coleta encontrada para esta data.</p></div>';
             } else {
-                // Lógica de Renderização com Estatísticas
+                let cardsHtml = '';
                 data.janelas.forEach(janela => {
-                    // Garantir que os valores sejam numéricos
                     const total = parseInt(janela.total_envios || 0);
                     const confirmados = parseInt(janela.envios_confirmados || 0);
                     const pendentes = total - confirmados;
                     const porcentagem = total > 0 ? (confirmados / total) * 100 : 0;
 
-                    container.innerHTML += `
+                    cardsHtml += `
                         <a href="vendas.html?janela=${encodeURIComponent(janela.janela_coleta)}&data=${dateString}" class="menu-card">
                             <div class="card-title">${janela.janela_coleta}</div>
                             <div class="card-stats">
@@ -196,13 +189,13 @@
                     `;
                 });
                 
-                // Adiciona o card de concluídos no final
-                container.innerHTML += `<a href="concluidos.html" class="menu-card menu-card-special">Ver Vendas Concluídas</a>`;
+                cardsHtml += `<a href="concluidos.html" class="menu-card menu-card-special">Ver Vendas Concluídas</a>`;
+                container.innerHTML = cardsHtml;
             }
             
         } catch (error) {
-            container.innerHTML = `<div class="no-data"><p>Erro ao carregar dados. Verifique o Console (F12).</p></div>`;
-            console.error('Erro ao processar dados ou invocar a função:', error);
+            container.innerHTML = `<div class="no-data" style="background:#f8d7da; color:#721c24;"><p>Erro ao carregar dados. Verifique se a Edge Function 'get-janelas-por-dia' está ativa.</p></div>`;
+            console.error('Erro detalhado:', error);
         }
     }
 </script>
